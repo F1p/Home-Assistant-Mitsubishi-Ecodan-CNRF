@@ -20,8 +20,8 @@
 extern ESPTelnet TelnetServer;
 #include "Debug.h"
 
-
-float Controller1Temperature, Controller2Temperature;
+float RCTemp[7];
+int ControllerQTY;
 
 // Initialisation Commands
 uint8_t Init3[] = { 0xfc, 0x5a, 0x04, 0x03, 0x02, 0xca, 0x01, 0xd2 };  // CNRF Connect
@@ -95,16 +95,16 @@ void ECODAN::StatusStateMachine(void) {
     DEBUG_PRINT("[Bridge > FTC] ");
     ECODANDECODER::CreateBlankTxMessage(GET_REQUEST, 0x10);
     ECODANDECODER::SetPayloadByte(0x27, 0);
-    ECODANDECODER::SetPayloadByte(((Controller1Temperature - 128.0f) / 2), 1);  // Controller 1 Current Temperature
-    ECODANDECODER::SetPayloadByte(((Controller2Temperature - 128.0f) / 2), 2);  // Controller 2 Current Temperature
-    ECODANDECODER::SetPayloadByte(0xff, 3);         // Controller 3 Current Temperature
-    ECODANDECODER::SetPayloadByte(0xff, 4);         // Controller 4 Current Temperature
-    ECODANDECODER::SetPayloadByte(0xff, 5);         // Controller 5 Current Temperature
-    ECODANDECODER::SetPayloadByte(0xff, 6);         // Controller 6 Current Temperature
-    ECODANDECODER::SetPayloadByte(0xff, 7);         // Controller 7 Current Temperature
-    ECODANDECODER::SetPayloadByte(0xff, 8);         // Controller 8 Current Temperature
-    ECODANDECODER::SetPayloadByte(0x03, 9);         // Controller 2 Current Temperature
-    ECODANDECODER::SetPayloadByte(0xff, 10);        // Controller 2 Current Temperature
+
+    // Update based on quantity in use
+    for (int i = 0; i < 8; i++) {
+      if ((i + 1) <= ControllerQTY) {
+        ECODANDECODER::SetPayloadByte(((RCTemp[i] - 128.0f) / 2), (i + 1));
+      } else {
+        ECODANDECODER::SetPayloadByte(0xff, i + 1);
+      }
+    }
+
     CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
     DeviceStream->write(Buffer, CommandSize);
     lastmsgdispatchedMillis = millis();

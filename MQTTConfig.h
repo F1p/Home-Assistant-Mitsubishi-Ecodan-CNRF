@@ -7,11 +7,25 @@ String MQTT_COMMAND = MQTT_BASETOPIC + "/Command";
 String MQTT_STATUS_TEMP = MQTT_STATUS + "/Temperature";
 String MQTT_STATUS_WIFISTATUS = MQTT_STATUS + "/WiFiStatus";
 
-String MQTT_COMMAND_C1 = MQTT_COMMAND + "/Controller1";
-String MQTT_COMMAND_C2 = MQTT_COMMAND + "/Controller2";
+String MQTT_COMMAND_QTY = MQTT_COMMAND + "/QTY";
+String MQTT_COMMAND_C1 = MQTT_COMMAND + "/RC1";
+String MQTT_COMMAND_C2 = MQTT_COMMAND + "/RC2";
+String MQTT_COMMAND_C3 = MQTT_COMMAND + "/RC3";
+String MQTT_COMMAND_C4 = MQTT_COMMAND + "/RC4";
+String MQTT_COMMAND_C5 = MQTT_COMMAND + "/RC5";
+String MQTT_COMMAND_C6 = MQTT_COMMAND + "/RC6";
+String MQTT_COMMAND_C7 = MQTT_COMMAND + "/RC7";
+String MQTT_COMMAND_C8 = MQTT_COMMAND + "/RC8";
 
+String MQTTCommandControllerQTY = MQTT_COMMAND_QTY;
 String MQTTCommandController1Current = MQTT_COMMAND_C1;
 String MQTTCommandController2Current = MQTT_COMMAND_C2;
+String MQTTCommandController3Current = MQTT_COMMAND_C3;
+String MQTTCommandController4Current = MQTT_COMMAND_C4;
+String MQTTCommandController5Current = MQTT_COMMAND_C5;
+String MQTTCommandController6Current = MQTT_COMMAND_C6;
+String MQTTCommandController7Current = MQTT_COMMAND_C7;
+String MQTTCommandController8Current = MQTT_COMMAND_C8;
 
 String MQTT_2_BASETOPIC = "Ecodan/CNRF";
 
@@ -22,11 +36,25 @@ String MQTT_2_COMMAND = MQTT_2_BASETOPIC + "/Command";
 String MQTT_2_STATUS_TEMP = MQTT_2_STATUS + "/Temperature";
 String MQTT_2_STATUS_WIFISTATUS = MQTT_2_STATUS + "/WiFiStatus";
 
-String MQTT_2_COMMAND_C1 = MQTT_2_COMMAND + "/Controller1";
-String MQTT_2_COMMAND_C2 = MQTT_2_COMMAND + "/Controller2";
+String MQTT_2_COMMAND_QTY = MQTT_2_COMMAND + "/QTY";
+String MQTT_2_COMMAND_C1 = MQTT_2_COMMAND + "/RC1";
+String MQTT_2_COMMAND_C2 = MQTT_2_COMMAND + "/RC2";
+String MQTT_2_COMMAND_C3 = MQTT_2_COMMAND + "/RC3";
+String MQTT_2_COMMAND_C4 = MQTT_2_COMMAND + "/RC4";
+String MQTT_2_COMMAND_C5 = MQTT_2_COMMAND + "/RC5";
+String MQTT_2_COMMAND_C6 = MQTT_2_COMMAND + "/RC6";
+String MQTT_2_COMMAND_C7 = MQTT_2_COMMAND + "/RC7";
+String MQTT_2_COMMAND_C8 = MQTT_2_COMMAND + "/RC8";
 
+String MQTTCommand2ControllerQTY = MQTT_2_COMMAND_QTY;
 String MQTTCommand2Controller1Current = MQTT_2_COMMAND_C1;
 String MQTTCommand2Controller2Current = MQTT_2_COMMAND_C2;
+String MQTTCommand2Controller3Current = MQTT_2_COMMAND_C3;
+String MQTTCommand2Controller4Current = MQTT_2_COMMAND_C4;
+String MQTTCommand2Controller5Current = MQTT_2_COMMAND_C5;
+String MQTTCommand2Controller6Current = MQTT_2_COMMAND_C6;
+String MQTTCommand2Controller7Current = MQTT_2_COMMAND_C7;
+String MQTTCommand2Controller8Current = MQTT_2_COMMAND_C8;
 
 
 
@@ -171,6 +199,14 @@ void readSettingsFromConfig() {
               MQTT_2_BASETOPIC = mqttSettings.baseTopic2;
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
+            // QTY to Use
+            if (doc.containsKey(unitSettings.qty_identifier)) {
+              if (doc[unitSettings.qty_identifier] > 0) {
+                unitSettings.Quantity = doc[unitSettings.qty_identifier];
+              }
+            } else {
+              shouldSaveConfig = true;
+            }
           }
         }
         configFile.close();
@@ -205,11 +241,25 @@ void readSettingsFromConfig() {
     MQTT_STATUS_TEMP = MQTT_STATUS + "/Temperature";
     MQTT_STATUS_WIFISTATUS = MQTT_STATUS + "/WiFiStatus";
 
-    MQTT_COMMAND_C1 = MQTT_COMMAND + "/Controller1";
-    MQTT_COMMAND_C2 = MQTT_COMMAND + "/Controller2";
+    MQTT_COMMAND_QTY = MQTT_COMMAND + "/QTY";
+    MQTT_COMMAND_C1 = MQTT_COMMAND + "/RC1";
+    MQTT_COMMAND_C2 = MQTT_COMMAND + "/RC2";
+    MQTT_COMMAND_C3 = MQTT_COMMAND + "/RC3";
+    MQTT_COMMAND_C4 = MQTT_COMMAND + "/RC4";
+    MQTT_COMMAND_C5 = MQTT_COMMAND + "/RC5";
+    MQTT_COMMAND_C6 = MQTT_COMMAND + "/RC6";
+    MQTT_COMMAND_C7 = MQTT_COMMAND + "/RC7";
+    MQTT_COMMAND_C8 = MQTT_COMMAND + "/RC8";
 
+    MQTTCommandControllerQTY = MQTT_COMMAND_QTY;
     MQTTCommandController1Current = MQTT_COMMAND_C1;
     MQTTCommandController2Current = MQTT_COMMAND_C2;
+    MQTTCommandController3Current = MQTT_COMMAND_C3;
+    MQTTCommandController4Current = MQTT_COMMAND_C4;
+    MQTTCommandController5Current = MQTT_COMMAND_C5;
+    MQTTCommandController6Current = MQTT_COMMAND_C6;
+    MQTTCommandController7Current = MQTT_COMMAND_C7;
+    MQTTCommandController8Current = MQTT_COMMAND_C8;
   }
 
 
@@ -251,6 +301,7 @@ void readSettingsFromConfig() {
       doc[mqttSettings.wm_mqtt2_user_identifier] = mqttSettings.user2;
       doc[mqttSettings.wm_mqtt2_password_identifier] = mqttSettings.password2;
       doc[mqttSettings.wm_mqtt2_basetopic_identifier] = mqttSettings.baseTopic2;
+      doc[unitSettings.qty_identifier] = unitSettings.Quantity;
 
       if (serializeJson(doc, configFile) == 0) {
         DEBUG_PRINTLN("[FAILED]");
@@ -323,7 +374,7 @@ void readSettingsFromConfig() {
 
 #ifndef ARDUINO_WT32_ETH01
     wifiManager.setConfigPortalTimeout(120);  // Timeout before launching the config portal (WiFi Only)
-    if (!wifiManager.autoConnect("Ecodan Bridge AP")) {
+    if (!wifiManager.autoConnect("Ecodan CNRF Bridge AP")) {
       DEBUG_PRINTLN("Failed to connect and hit timeout");
     } else {
       DEBUG_PRINTLN("WiFi Connected!");
@@ -353,7 +404,7 @@ void readSettingsFromConfig() {
     char Buffer_Payload[2048];
 
     // Publish all the discovery topics
-    for (int i = 0; i < discovery_topics; i++) {
+    for (int i = 0; i <= discovery_topics; i++) {
 
       if (i == 0) {  // If the first topic
         Config["device"]["identifiers"] = WiFiHostname;
@@ -381,8 +432,28 @@ void readSettingsFromConfig() {
         MQTT_DISCOVERY_TOPIC = "homeassistant/sensor/";
       }
 
-      // Number Input
-      if (i >= 3 && i < 5) {
+      if (i >= 3 && i < 4) {
+        Config["command_topic"] = BASETOPIC + String(MQTT_TOPIC[3]);
+        Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[2]);
+        Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
+        Config["options"][0] = "1";
+        Config["options"][1] = "2";
+        Config["options"][2] = "3";
+        Config["options"][3] = "4";
+        Config["options"][4] = "5";
+        Config["options"][5] = "6";
+        Config["options"][6] = "7";
+        Config["options"][7] = "8";
+        Config["icon"] = String(MQTT_MDI_ICONS[i]);
+
+        // Add Availability Topics
+        Config["availability"]["topic"] = BASETOPIC + String(MQTT_TOPIC[0]);
+
+        MQTT_DISCOVERY_TOPIC = "homeassistant/select/";
+      }
+
+      // RC Input
+      if (i >= 4 && i < 12) {
         Config["min"] = 0;
         Config["max"] = 50;
         Config["mode"] = "box";
@@ -390,7 +461,7 @@ void readSettingsFromConfig() {
         Config["step"] = 0.01;
         Config["unit_of_measurement"] = "°C";
         Config["command_topic"] = BASETOPIC + String(MQTT_TOPIC[i]);
-        Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[2]);
+        Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[MQTT_TOPIC_POS[i]]);
         Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
         Config["icon"] = String(MQTT_MDI_ICONS[i]);
 
@@ -399,7 +470,7 @@ void readSettingsFromConfig() {
 
         MQTT_DISCOVERY_TOPIC = "homeassistant/number/";
       }
-      
+
       size_t buf_size = serializeJson(Config, Buffer_Payload);
       Buffer_Topic = MQTT_DISCOVERY_TOPIC + ChipID + String(MQTT_DISCOVERY_OBJ_ID[i]) + "/config";
 
@@ -432,8 +503,15 @@ void readSettingsFromConfig() {
     MQTTClient1.publish(MQTT_LWT.c_str(), "online");
     delay(50);
 
+    MQTTClient1.subscribe(MQTTCommandControllerQTY.c_str());
     MQTTClient1.subscribe(MQTTCommandController1Current.c_str());
     MQTTClient1.subscribe(MQTTCommandController2Current.c_str());
+    MQTTClient1.subscribe(MQTTCommandController3Current.c_str());
+    MQTTClient1.subscribe(MQTTCommandController4Current.c_str());
+    MQTTClient1.subscribe(MQTTCommandController5Current.c_str());
+    MQTTClient1.subscribe(MQTTCommandController6Current.c_str());
+    MQTTClient1.subscribe(MQTTCommandController7Current.c_str());
+    MQTTClient1.subscribe(MQTTCommandController8Current.c_str());
 
     delay(10);
     PublishDiscoveryTopics(1, MQTT_BASETOPIC);
@@ -542,11 +620,25 @@ void readSettingsFromConfig() {
     MQTT_2_STATUS_TEMP = MQTT_2_STATUS + "/Temperature";
     MQTT_2_STATUS_WIFISTATUS = MQTT_2_STATUS + "/WiFiStatus";
 
-    MQTT_2_COMMAND_C1 = MQTT_2_COMMAND + "/Controller1";
-    MQTT_2_COMMAND_C2 = MQTT_2_COMMAND + "/Controller2";
+    MQTT_2_COMMAND_QTY = MQTT_2_COMMAND + "/QTY";
+    MQTT_2_COMMAND_C1 = MQTT_2_COMMAND + "/RC1";
+    MQTT_2_COMMAND_C2 = MQTT_2_COMMAND + "/RC2";
+    MQTT_2_COMMAND_C3 = MQTT_2_COMMAND + "/RC3";
+    MQTT_2_COMMAND_C4 = MQTT_2_COMMAND + "/RC4";
+    MQTT_2_COMMAND_C5 = MQTT_2_COMMAND + "/RC5";
+    MQTT_2_COMMAND_C6 = MQTT_2_COMMAND + "/RC6";
+    MQTT_2_COMMAND_C7 = MQTT_2_COMMAND + "/RC7";
+    MQTT_2_COMMAND_C8 = MQTT_2_COMMAND + "/RC8";
 
+    MQTTCommand2ControllerQTY = MQTT_2_COMMAND_QTY;
     MQTTCommand2Controller1Current = MQTT_2_COMMAND_C1;
     MQTTCommand2Controller2Current = MQTT_2_COMMAND_C2;
+    MQTTCommand2Controller3Current = MQTT_2_COMMAND_C3;
+    MQTTCommand2Controller4Current = MQTT_2_COMMAND_C4;
+    MQTTCommand2Controller5Current = MQTT_2_COMMAND_C5;
+    MQTTCommand2Controller6Current = MQTT_2_COMMAND_C6;
+    MQTTCommand2Controller7Current = MQTT_2_COMMAND_C7;
+    MQTTCommand2Controller8Current = MQTT_2_COMMAND_C8;
   }
 
 
@@ -568,9 +660,15 @@ void readSettingsFromConfig() {
     MQTTClient2.publish(MQTT_2_LWT.c_str(), "online");
     delay(50);
 
-    DEBUG_PRINTLN(MQTTCommand2Controller1Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2ControllerQTY.c_str());
     MQTTClient2.subscribe(MQTTCommand2Controller1Current.c_str());
     MQTTClient2.subscribe(MQTTCommand2Controller2Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2Controller3Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2Controller4Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2Controller5Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2Controller6Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2Controller7Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2Controller8Current.c_str());
 
     delay(10);
     PublishDiscoveryTopics(2, MQTT_2_BASETOPIC);

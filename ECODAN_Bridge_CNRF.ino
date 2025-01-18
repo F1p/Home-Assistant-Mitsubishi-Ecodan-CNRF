@@ -38,7 +38,8 @@
 #endif
 
 
-extern float Controller1Temperature, Controller2Temperature;
+extern float RCTemp[7];
+extern int ControllerQTY;
 
 
 #include <DNSServer.h>
@@ -150,7 +151,13 @@ struct MqttSettings {
   char wm_mqtt2_client_id_identifier[20] = "mqtt2_client_id";
 };
 
+struct UnitSettings {
+  int Quantity = 2;
+  char qty_identifier[4] = "qty";
+};
+
 MqttSettings mqttSettings;
+UnitSettings unitSettings;
 ECODAN HeatPump;
 #ifdef ESP8266
 SoftwareSerial SwSerial1;
@@ -192,7 +199,7 @@ void PublishAllReports(void);
 
 
 TimerCallBack HeatPumpQuery1(500, HeatPumpQueryStateEngine);  // Set to 400ms (Safe), 320-350ms best time between messages
-TimerCallBack HeatPumpQuery2(1000, HeatPumpKeepAlive);       // Set to 20-30s for heat pump query frequency
+TimerCallBack HeatPumpQuery2(1000, HeatPumpKeepAlive);        // Set to 20-30s for heat pump query frequency
 TimerCallBack HeatPumpQuery3(30000, handleMQTTState);         // Re-connect attempt timer if MQTT is not online
 TimerCallBack HeatPumpQuery4(30000, handleMQTT2State);        // Re-connect attempt timer if MQTT Stream 2 is not online
 TimerCallBack HeatPumpQuery5(30000, PublishAllReports);       // Set to 20-30s for heat pump query frequency
@@ -209,7 +216,7 @@ bool FTCOneShot1 = false;
 bool FTCOneShot2 = false;
 bool CableConnected = true;
 bool WiFiConnectedLastLoop = false;
-float Input1Value, Input2Value;
+float RCInput[7];
 
 #ifdef ARDUINO_WT32_ETH01
 static bool eth_connected = false;
@@ -275,16 +282,18 @@ void setup() {
 
 
   wifiManager.startWebPortal();
-  Controller1Temperature = 18.0;
-  Controller2Temperature = 18.0;
-  Input1Value = Controller1Temperature;
-  Input2Value = Controller2Temperature;
+  for (int i = 0; i < 8; i++) {
+    RCInput[i] = 18.0;
+    RCTemp[i] = RCInput[i];
+  }
 }
 
 
 void loop() {
   // -- Loop Start -- //
   looppreviousMillis = micros();  // Loop Speed Check
+
+  ControllerQTY = unitSettings.Quantity;
 
   // -- Process Handlers -- //
   HeatPumpQuery1.Process();
@@ -460,16 +469,44 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   DEBUG_PRINT(" with Payload ");
   DEBUG_PRINTLN(Payload.c_str());
 
-  // Controller 1 Current Temperature
-  if ((Topic == MQTTCommandController1Current) || (Topic == MQTTCommand2Controller1Current)) {
-    Controller1Temperature = roundToNearestHalf(Payload.toFloat());
-    Input1Value = Payload.toFloat();
+  // QTY in use
+  if ((Topic == MQTTCommandControllerQTY) || (Topic == MQTTCommand2ControllerQTY)) {
+    unitSettings.Quantity = Payload.toInt();
+    shouldSaveConfig = true;  // Write the data to JSON file so if device reboots it is saved
   }
 
-  // Controller 2 Current Temperature
+  // RCs 1-8
+  if ((Topic == MQTTCommandController1Current) || (Topic == MQTTCommand2Controller1Current)) {
+    RCInput[0] = Payload.toFloat();
+    RCTemp[0] = roundToNearestHalf(Payload.toFloat());
+  }
   if ((Topic == MQTTCommandController2Current) || (Topic == MQTTCommand2Controller2Current)) {
-    Controller2Temperature = roundToNearestHalf(Payload.toFloat());
-    Input2Value = Payload.toFloat();
+    RCInput[1] = Payload.toFloat();
+    RCTemp[1] = roundToNearestHalf(Payload.toFloat());
+  }
+  if ((Topic == MQTTCommandController3Current) || (Topic == MQTTCommand2Controller3Current)) {
+    RCInput[2] = Payload.toFloat();
+    RCTemp[2] = roundToNearestHalf(Payload.toFloat());
+  }
+  if ((Topic == MQTTCommandController4Current) || (Topic == MQTTCommand2Controller4Current)) {
+    RCInput[3] = Payload.toFloat();
+    RCTemp[3] = roundToNearestHalf(Payload.toFloat());
+  }
+  if ((Topic == MQTTCommandController5Current) || (Topic == MQTTCommand2Controller5Current)) {
+    RCInput[4] = Payload.toFloat();
+    RCTemp[4] = roundToNearestHalf(Payload.toFloat());
+  }
+  if ((Topic == MQTTCommandController6Current) || (Topic == MQTTCommand2Controller6Current)) {
+    RCInput[5] = Payload.toFloat();
+    RCTemp[5] = roundToNearestHalf(Payload.toFloat());
+  }
+  if ((Topic == MQTTCommandController7Current) || (Topic == MQTTCommand2Controller7Current)) {
+    RCInput[6] = Payload.toFloat();
+    RCTemp[6] = roundToNearestHalf(Payload.toFloat());
+  }
+  if ((Topic == MQTTCommandController8Current) || (Topic == MQTTCommand2Controller8Current)) {
+    RCInput[7] = Payload.toFloat();
+    RCTemp[7] = roundToNearestHalf(Payload.toFloat());
   }
 
   Report();
@@ -477,13 +514,28 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
 
 
 void Report(void) {
-  StaticJsonDocument<512> doc;
-  char Buffer[512];
+  StaticJsonDocument<1024> doc;
+  char Buffer[1024];
 
-  doc[F("Input1")] = Input1Value;
-  doc[F("Input2")] = Input2Value;
-  doc[F("Controller1Temperature")] = Controller1Temperature;
-  doc[F("Controller2Temperature")] = Controller2Temperature;
+  doc[F("QTY")] = unitSettings.Quantity;
+
+  doc[F("RC1Input")] = RCInput[0];
+  doc[F("RC1Rounded")] = RCTemp[0];
+  doc[F("RC2Input")] = RCInput[1];
+  doc[F("RC2Rounded")] = RCTemp[1];
+  doc[F("RC3Input")] = RCInput[2];
+  doc[F("RC3Rounded")] = RCTemp[2];
+  doc[F("RC4Input")] = RCInput[3];
+  doc[F("RC4Rounded")] = RCTemp[3];
+  doc[F("RC5Input")] = RCInput[4];
+  doc[F("RC5Rounded")] = RCTemp[4];
+  doc[F("RC6Input")] = RCInput[5];
+  doc[F("RC6Rounded")] = RCTemp[5];
+  doc[F("RC7Input")] = RCInput[6];
+  doc[F("RC7Rounded")] = RCTemp[6];
+  doc[F("RC8Input")] = RCInput[7];
+  doc[F("RC8Rounded")] = RCTemp[7];
+
   doc[F("HB_ID")] = Heart_Value;
 
   serializeJson(doc, Buffer);
