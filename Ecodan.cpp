@@ -99,7 +99,7 @@ void ECODAN::StatusStateMachine(void) {
     // Update based on quantity in use
     for (int i = 0; i < 8; i++) {
       if ((i + 1) <= ControllerQTY) {
-        ECODANDECODER::SetPayloadByte(((RCTemp[i] - 128.0f) / 2), (i + 1));
+        ECODANDECODER::SetPayloadByte(((RCTemp[i] * 2) + 128), (i + 1));
       } else {
         ECODANDECODER::SetPayloadByte(0xff, i + 1);
       }
