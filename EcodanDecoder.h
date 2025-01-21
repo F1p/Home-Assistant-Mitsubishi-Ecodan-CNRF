@@ -70,7 +70,7 @@ typedef struct _MessgeStruct {
 } MessageStruct;
 
 typedef struct _EcodanStatus {
-
+  uint8_t Zone1ActiveInput, Zone2ActiveInput;
 } EcodanStatus;
 
 
@@ -82,7 +82,6 @@ public:
   void CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize);
   void SetPayloadByte(uint8_t Data, uint8_t Location);
   uint8_t PrepareTxCommand(uint8_t *Buffer);
-
   EcodanStatus Status;
 protected:
 

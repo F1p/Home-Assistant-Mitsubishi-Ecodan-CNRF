@@ -423,7 +423,7 @@ void readSettingsFromConfig() {
       Config["name"] = String(MQTT_SENSOR_NAME[i]);
 
       // Sensors
-      if (i >= 0 && i < 3) {
+      if (i >= 0 && i < 5) {
         Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[MQTT_TOPIC_POS[i]]);                                    // Needs a positioner
         if (MQTT_UNITS_POS[i] > 0) { Config["unit_of_measurement"] = String(MQTT_SENSOR_UNITS[MQTT_UNITS_POS[i]]); }  // Don't send nothing
         Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
@@ -432,7 +432,7 @@ void readSettingsFromConfig() {
         MQTT_DISCOVERY_TOPIC = "homeassistant/sensor/";
       }
 
-      if (i >= 3 && i < 4) {
+      if (i >= 5 && i < 6) {
         Config["command_topic"] = BASETOPIC + String(MQTT_TOPIC[3]);
         Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[2]);
         Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
@@ -453,7 +453,7 @@ void readSettingsFromConfig() {
       }
 
       // RC Input
-      if (i >= 4 && i < 12) {
+      if (i >= 6 && i < 14) {
         Config["min"] = 0;
         Config["max"] = 50;
         Config["mode"] = "box";

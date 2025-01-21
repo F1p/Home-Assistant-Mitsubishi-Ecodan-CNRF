@@ -34,11 +34,7 @@ uint8_t ECODANDECODER::Process(uint8_t c) {
   if (BuildRxMessage(&RxMessage, c)) {
     ReturnValue = true;
     if (RxMessage.PacketType == GET_RESPONSE) {
-      switch (RxMessage.Payload[0]) {
-        case 0x00:
-          Process0x6c(RxMessage.Payload, &Status);
-          break;
-      }
+      Process0x6c(RxMessage.Payload, &Status);
     }
   }
   return ReturnValue;
@@ -132,7 +128,13 @@ uint8_t ECODANDECODER::BuildRxMessage(MessageStruct *Message, uint8_t c) {
 
 
 void ECODANDECODER::Process0x6c(uint8_t *Buffer, EcodanStatus *Status) {
-  /// Placeholder
+  uint8_t Zone1ActiveInput, Zone2ActiveInput;
+
+  Zone1ActiveInput = Buffer[1];
+  Zone2ActiveInput = Buffer[13];
+
+  Status->Zone1ActiveInput = Zone1ActiveInput;
+  Status->Zone2ActiveInput = Zone2ActiveInput;
 }
 
 void ECODANDECODER::CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize) {

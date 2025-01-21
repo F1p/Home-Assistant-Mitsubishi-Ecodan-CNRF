@@ -518,6 +518,8 @@ void Report(void) {
   char Buffer[1024];
 
   doc[F("QTY")] = unitSettings.Quantity;
+  doc[F("Z1ActiveInput")] = HeatPump.Status.Zone1ActiveInput;
+  doc[F("Z2ActiveInput")] = HeatPump.Status.Zone2ActiveInput;
 
   doc[F("RC1Input")] = RCInput[0];
   doc[F("RC1Rounded")] = RCTemp[0];
