@@ -39,25 +39,6 @@
 #define PREAMBLESIZE 2
 
 
-// System Flags
-
-#define SET_ZONE_SETPOINT 0x80
-#define UNKNOWN1 0x40
-#define SET_HOT_WATER_SETPOINT 0x20
-#define UNKNOWN2 0x10
-#define SET_HEATING_CONTROL_MODE_Z1 0x08
-#define SET_HEATING_CONTROL_MODE_Z2 0x10
-#define SET_HOT_WATER_MODE 0x04
-#define UNKNOWN3 0x02
-#define SET_SYSTEM_POWER 0x01
-#define SET_HOT_WATER_BOOST 0x01
-
-#define ZONE1 0x00        // Zone1
-#define ZONE1_TSTAT 0x02  // Zone 1 Thermostat
-#define ZONE2 0x02        // Zone2
-#define ZONE2_TSTAT 0x08  // Zone 2 Thermostat
-#define BOTH 0x03         // BOTH
-
 
 
 typedef struct _MessgeStruct {
@@ -70,7 +51,7 @@ typedef struct _MessgeStruct {
 } MessageStruct;
 
 typedef struct _EcodanStatus {
-  uint8_t Zone1ActiveInput, Zone2ActiveInput;
+  uint8_t Zone1ActiveInput, Zone2ActiveInput, SetpointZ1, SetpointZ2, ErrorCode;
 } EcodanStatus;
 
 
@@ -108,7 +89,8 @@ private:
 
   uint8_t CheckSum(uint8_t *Buffer, uint8_t len);
 
-  void Process0x6c(uint8_t *Payload, EcodanStatus *Status);
+  void Process0x6C(uint8_t *Payload, EcodanStatus *Status);
+  void Process0x68(uint8_t *Payload, EcodanStatus *Status);
 
   void WriteOK(uint8_t *Payload, EcodanStatus *Status);
 };

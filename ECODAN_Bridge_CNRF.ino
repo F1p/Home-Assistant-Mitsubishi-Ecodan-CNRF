@@ -38,7 +38,7 @@
 #endif
 
 
-extern float RCTemp[7];
+extern float RCTemp[8];
 extern int ControllerQTY;
 
 
@@ -199,7 +199,7 @@ void PublishAllReports(void);
 
 
 TimerCallBack HeatPumpQuery1(500, HeatPumpQueryStateEngine);  // Set to 400ms (Safe), 320-350ms best time between messages
-TimerCallBack HeatPumpQuery2(1000, HeatPumpKeepAlive);        // Set to 20-30s for heat pump query frequency
+TimerCallBack HeatPumpQuery2(5000, HeatPumpKeepAlive);        // Set to 20-30s for heat pump query frequency
 TimerCallBack HeatPumpQuery3(30000, handleMQTTState);         // Re-connect attempt timer if MQTT is not online
 TimerCallBack HeatPumpQuery4(30000, handleMQTT2State);        // Re-connect attempt timer if MQTT Stream 2 is not online
 TimerCallBack HeatPumpQuery5(30000, PublishAllReports);       // Set to 20-30s for heat pump query frequency
@@ -520,6 +520,9 @@ void Report(void) {
   doc[F("QTY")] = unitSettings.Quantity;
   doc[F("Z1ActiveInput")] = HeatPump.Status.Zone1ActiveInput;
   doc[F("Z2ActiveInput")] = HeatPump.Status.Zone2ActiveInput;
+  doc[F("Z1Setpoint")] = HeatPump.Status.SetpointZ1;
+  doc[F("Z2Setpoint")] = HeatPump.Status.SetpointZ2;
+  doc[F("ErrorCode")] = HeatPump.Status.ErrorCode;
 
   doc[F("RC1Input")] = RCInput[0];
   doc[F("RC1Rounded")] = RCTemp[0];

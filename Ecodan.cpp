@@ -25,6 +25,7 @@ int ControllerQTY;
 
 // Initialisation Commands
 uint8_t Init3[] = { 0xfc, 0x5a, 0x04, 0x03, 0x02, 0xca, 0x01, 0xd2 };  // CNRF Connect
+uint8_t Init4[] = { 0xfc, 0x4c, 0x04, 0x03, 0x10, 0x32, 0x03, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x69 };
 
 
 unsigned long lastmsgdispatchedMillis = 0;  // variable for comparing millis counter
@@ -73,12 +74,16 @@ void ECODAN::Process(void) {
 void ECODAN::SetStream(Stream *HeatPumpStream) {
   DeviceStream = HeatPumpStream;
   Connect();
+  delay(250);
+  ConfigConnect();
 }
 
 
 void ECODAN::TriggerStatusStateMachine(void) {
   if (!Connected) {
     Connect();
+    delay(250);
+    ConfigConnect();
   }
   CurrentMessage = 1;  // This triggers the run
   Connected = false;
@@ -104,6 +109,8 @@ void ECODAN::StatusStateMachine(void) {
         ECODANDECODER::SetPayloadByte(0xff, i + 1);
       }
     }
+    ECODANDECODER::SetPayloadByte(0x03, 9);
+    ECODANDECODER::SetPayloadByte(0xff, 10);
 
     CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
     DeviceStream->write(Buffer, CommandSize);
@@ -130,6 +137,13 @@ void ECODAN::StatusStateMachine(void) {
 void ECODAN::Connect(void) {
   DEBUG_PRINTLN("Connecting to Heat Pump...");
   DeviceStream->write(Init3, 8);
+  DeviceStream->flush();
+  Process();
+}
+
+void ECODAN::ConfigConnect(void) {
+  DEBUG_PRINTLN("Sending Config Request to Heat Pump...");
+  DeviceStream->write(Init4, 22);
   DeviceStream->flush();
   Process();
 }

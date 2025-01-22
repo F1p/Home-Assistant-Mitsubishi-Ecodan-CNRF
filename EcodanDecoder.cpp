@@ -33,9 +33,12 @@ uint8_t ECODANDECODER::Process(uint8_t c) {
 
   if (BuildRxMessage(&RxMessage, c)) {
     ReturnValue = true;
-    if (RxMessage.PacketType == GET_RESPONSE) {
-      Process0x6c(RxMessage.Payload, &Status);
+    if (RxMessage.PacketType == INIT_RESPONSE) {
+      Process0x6C(RxMessage.Payload, &Status);
     }
+    if (RxMessage.PacketType == GET_RESPONSE) {
+      Process0x68(RxMessage.Payload, &Status);
+    }    
   }
   return ReturnValue;
 }
@@ -54,8 +57,6 @@ uint8_t ECODANDECODER::BuildRxMessage(MessageStruct *Message, uint8_t c) {
 
       case 1:
         switch (c) {
-          case INIT_RESPONSE:
-            break;
           case GET_REQUEST:
             break;
           case GET_RESPONSE:
@@ -63,6 +64,12 @@ uint8_t ECODANDECODER::BuildRxMessage(MessageStruct *Message, uint8_t c) {
           case CONNECT_REQUEST:
             break;
           case CONNECT_RESPONSE:
+            break;
+          case INIT_REQUEST:
+            break;
+          case INIT_RESPONSE:
+            break;
+          case GET_ABOUT_RESPONSE:
             break;
           default:
             //Serial.println("Unknown PacketType");
@@ -123,18 +130,35 @@ uint8_t ECODANDECODER::BuildRxMessage(MessageStruct *Message, uint8_t c) {
       return false;
     }
   }
-  return true;
+  return false;
+}
+
+void ECODANDECODER::Process0x6C(uint8_t *Buffer, EcodanStatus *Status) {
 }
 
 
-void ECODANDECODER::Process0x6c(uint8_t *Buffer, EcodanStatus *Status) {
-  uint8_t Zone1ActiveInput, Zone2ActiveInput;
+void ECODANDECODER::Process0x68(uint8_t *Buffer, EcodanStatus *Status) {  
+  uint8_t Zone1ActiveInput, Zone2ActiveInput, SetpointZ1, SetpointZ2, ErrorCode;
 
   Zone1ActiveInput = Buffer[1];
-  Zone2ActiveInput = Buffer[13];
+  ErrorCode = Buffer[2];
+  SetpointZ1 = ExtractUInt8_v1(Buffer, 3);
+  //Unknown = Buffer[4];
+  //DHW = Buffer[5];
+  //Unknown = Buffer[6];
+  //Unknown = Buffer[7];
+  //Unknown = Buffer[8];
+  //Unknown = Buffer[9];
+  //Unknown = Buffer[10];
+  //Unknown = Buffer[11];
+  SetpointZ2 = ExtractUInt8_v1(Buffer, 13);
+  Zone2ActiveInput = Buffer[14];
 
   Status->Zone1ActiveInput = Zone1ActiveInput;
   Status->Zone2ActiveInput = Zone2ActiveInput;
+  Status->SetpointZ1 = SetpointZ1;
+  Status->SetpointZ2 = SetpointZ2;
+  Status->ErrorCode = ErrorCode;
 }
 
 void ECODANDECODER::CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize) {
@@ -184,6 +208,13 @@ uint8_t ECODANDECODER::PrepareCommand(MessageStruct *Message, uint8_t *Buffer) {
   Buffer[MessageSize] = MessageChecksum;
 
   return MessageSize + 1;
+}
+
+
+// Used for most single-byte floating point values
+float ECODANDECODER::ExtractUInt8_v1(uint8_t *Buffer, uint8_t Index) {
+  float Value = (Buffer[Index] / 2) - 40;
+  return Value;
 }
 
 

@@ -53,6 +53,7 @@ private:
   MessageStruct TXMessage;
   Stream *DeviceStream;
   void Connect(void);
+  void ConfigConnect(void);
 };
 
 #endif
