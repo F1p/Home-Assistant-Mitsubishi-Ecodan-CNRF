@@ -514,8 +514,8 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
 
 
 void Report(void) {
-  StaticJsonDocument<1024> doc;
-  char Buffer[1024];
+  JsonDocument doc;
+  char Buffer[2048];
 
   doc[F("QTY")] = unitSettings.Quantity;
   doc[F("Z1ActiveInput")] = HeatPump.Status.Zone1ActiveInput;
@@ -662,6 +662,10 @@ void onTelnetConnectionAttempt(String ip) {
 
 double round2(double value) {
   return (int)(value * 100 + 0.5) / 100.0;
+}
+
+float uint8_V1(uint8_t Value) {
+  return (float)((Value - 128) / 2);
 }
 
 float roundToNearestHalf(float value) {

@@ -38,7 +38,7 @@ uint8_t ECODANDECODER::Process(uint8_t c) {
     }
     if (RxMessage.PacketType == GET_RESPONSE) {
       Process0x68(RxMessage.Payload, &Status);
-    }    
+    }
   }
   return ReturnValue;
 }
@@ -137,28 +137,30 @@ void ECODANDECODER::Process0x6C(uint8_t *Buffer, EcodanStatus *Status) {
 }
 
 
-void ECODANDECODER::Process0x68(uint8_t *Buffer, EcodanStatus *Status) {  
-  uint8_t Zone1ActiveInput, Zone2ActiveInput, SetpointZ1, SetpointZ2, ErrorCode;
+void ECODANDECODER::Process0x68(uint8_t *Buffer, EcodanStatus *Status) {
+  uint8_t Zone1ActiveInput, Zone2ActiveInput, ErrorCode, ErrorCodeNum, DHWForce, SetpointZ1Temp, SetpointZ2Temp;
 
   Zone1ActiveInput = Buffer[1];
   ErrorCode = Buffer[2];
-  SetpointZ1 = ExtractUInt8_v1(Buffer, 3);
-  //Unknown = Buffer[4];
-  //DHW = Buffer[5];
-  //Unknown = Buffer[6];
+  SetpointZ1Temp = Buffer[3];
+  //Unknown = Buffer[4]; Holiday?
+  DHWForce = Buffer[5];
+  //Unknown = Buffer[6]; Holiday?
   //Unknown = Buffer[7];
   //Unknown = Buffer[8];
   //Unknown = Buffer[9];
-  //Unknown = Buffer[10];
+  ErrorCodeNum = Buffer[10];
   //Unknown = Buffer[11];
-  SetpointZ2 = ExtractUInt8_v1(Buffer, 13);
-  Zone2ActiveInput = Buffer[14];
+  SetpointZ2Temp = Buffer[12];
+  Zone2ActiveInput = Buffer[13];
 
   Status->Zone1ActiveInput = Zone1ActiveInput;
   Status->Zone2ActiveInput = Zone2ActiveInput;
-  Status->SetpointZ1 = SetpointZ1;
-  Status->SetpointZ2 = SetpointZ2;
+  Status->SetpointZ1 = ((SetpointZ1Temp - 128.0f) / 2);
+  Status->SetpointZ2 = ((SetpointZ2Temp - 128.0f) / 2);
   Status->ErrorCode = ErrorCode;
+  Status->ErrorCodeNum = ErrorCodeNum;
+  Status->DHWForce = DHWForce;
 }
 
 void ECODANDECODER::CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize) {
@@ -210,12 +212,6 @@ uint8_t ECODANDECODER::PrepareCommand(MessageStruct *Message, uint8_t *Buffer) {
   return MessageSize + 1;
 }
 
-
-// Used for most single-byte floating point values
-float ECODANDECODER::ExtractUInt8_v1(uint8_t *Buffer, uint8_t Index) {
-  float Value = (Buffer[Index] / 2) - 40;
-  return Value;
-}
 
 
 uint8_t ECODANDECODER::CheckSum(uint8_t *Buffer, uint8_t len) {

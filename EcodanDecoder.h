@@ -51,7 +51,8 @@ typedef struct _MessgeStruct {
 } MessageStruct;
 
 typedef struct _EcodanStatus {
-  uint8_t Zone1ActiveInput, Zone2ActiveInput, SetpointZ1, SetpointZ2, ErrorCode;
+  uint16_t Zone1ActiveInput, Zone2ActiveInput, ErrorCode, DHWForce, ErrorCodeNum;
+  float SetpointZ1, SetpointZ2;
 } EcodanStatus;
 
 
@@ -79,13 +80,6 @@ private:
   void CreateBlankMessageTemplate(MessageStruct *Message, uint8_t PacketType, uint8_t PayloadSize);
   uint8_t PrepareCommand(MessageStruct *Message, uint8_t *Buffer);
 
-
-  uint16_t ExtractUInt16(uint8_t *Buffer, uint8_t Index);
-  float Extract_Float_24(uint8_t *Buffer, uint8_t Index);
-  float ExtractUInt16_Signed(uint8_t *Buffer, uint8_t Index);
-  float ExtractUInt8_v1(uint8_t *Buffer, uint8_t Index);
-  float ExtractUInt8_v2(uint8_t *Buffer, uint8_t Index);
-  float ExtractEnergy(uint8_t *Buffer, uint8_t index);
 
   uint8_t CheckSum(uint8_t *Buffer, uint8_t len);
 

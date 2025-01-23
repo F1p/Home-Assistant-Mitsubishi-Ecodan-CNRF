@@ -20,7 +20,7 @@
 extern ESPTelnet TelnetServer;
 #include "Debug.h"
 
-float RCTemp[7];
+float RCTemp[8];
 int ControllerQTY;
 
 // Initialisation Commands
