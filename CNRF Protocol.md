@@ -45,7 +45,6 @@
 |fc |68 | 4 | 3 |10 | 0  | 1 | 2 | a3| 0 | 0 | 0 | 5 | 0 |21 | 0 |0  | a4| 2 | 0 | 0 | f |    (During normal op state)
 |fc |68 | 4 | 3 |10 | 0  | 1 | 0 | a2| 0 | 0 | 0 | 5 | 0 |21 |90 |0  | a2| 2 | 0 | 0 | 84|    (During Error 1 State/J0 on FTC)
 |fc |68 | 4 | 3 | 10 | 0 | 1 | 1 | a2| 0 | 1 | 0 | 5 | 0 |21 | 0 |0  | a2| 2 | 0 | 0 |12 |    (During Hot Water Boost)
-|FC |68 |04 |03 |10 |00 |01 |02 |AE |01 |00 |00 |00 |00 |F1 |00 |00 |A6 |00 |00 |00 |38|    (Single Zone Reply)
 * z1 : Zone 1 Setpoint
 * z2 : Zone 2 Setpoint
 * Z1/Z2A : Zone 1/2 Active Input Temperature?
