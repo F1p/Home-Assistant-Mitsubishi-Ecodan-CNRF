@@ -49,7 +49,7 @@ extern int ControllerQTY;
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "1.0.0";
+String FirmwareVersion = "1.1.0";
 
 
 #ifdef ESP8266  // Define the Witty ESP8266 Serial Pins
@@ -476,40 +476,38 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   }
 
   // RCs 1-8
-  if ((Topic == MQTTCommandController1Current) || (Topic == MQTTCommand2Controller1Current)) {
-    RCInput[0] = Payload.toFloat();
-    RCTemp[0] = roundToNearestHalf(Payload.toFloat());
-  }
-  if ((Topic == MQTTCommandController2Current) || (Topic == MQTTCommand2Controller2Current)) {
-    RCInput[1] = Payload.toFloat();
-    RCTemp[1] = roundToNearestHalf(Payload.toFloat());
-  }
-  if ((Topic == MQTTCommandController3Current) || (Topic == MQTTCommand2Controller3Current)) {
-    RCInput[2] = Payload.toFloat();
-    RCTemp[2] = roundToNearestHalf(Payload.toFloat());
-  }
-  if ((Topic == MQTTCommandController4Current) || (Topic == MQTTCommand2Controller4Current)) {
-    RCInput[3] = Payload.toFloat();
-    RCTemp[3] = roundToNearestHalf(Payload.toFloat());
-  }
-  if ((Topic == MQTTCommandController5Current) || (Topic == MQTTCommand2Controller5Current)) {
-    RCInput[4] = Payload.toFloat();
-    RCTemp[4] = roundToNearestHalf(Payload.toFloat());
-  }
-  if ((Topic == MQTTCommandController6Current) || (Topic == MQTTCommand2Controller6Current)) {
-    RCInput[5] = Payload.toFloat();
-    RCTemp[5] = roundToNearestHalf(Payload.toFloat());
-  }
-  if ((Topic == MQTTCommandController7Current) || (Topic == MQTTCommand2Controller7Current)) {
-    RCInput[6] = Payload.toFloat();
-    RCTemp[6] = roundToNearestHalf(Payload.toFloat());
-  }
-  if ((Topic == MQTTCommandController8Current) || (Topic == MQTTCommand2Controller8Current)) {
-    RCInput[7] = Payload.toFloat();
-    RCTemp[7] = roundToNearestHalf(Payload.toFloat());
-  }
+  if ((Topic == MQTTCommandControllerRC) || (Topic == MQTTCommand2ControllerRC)) {
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, Payload);
+    if (error) {
+      DEBUG_PRINT("Failed to read file: ");
+      DEBUG_PRINTLN(error.c_str());
+    } else {
+      String type = doc["type"];
 
-  Report();
+      // Zone 1
+      if (type == "zone1") {
+        float value = doc["value"];
+      }
+      // Zone 2
+      if (type == "zone2") {
+        float value = doc["value"];
+      }
+      // RC
+      if (type == "rc") {
+        int action = doc["action"];
+        float value = doc["value"];
+        RCInput[action-1] = value;
+        RCTemp[action-1] = roundToNearestHalf(value);
+      }
+      // DHW
+      if (type == "dhw") {}
+      // HOL
+      if (type == "hol") {}
+
+      Report();
+    }
+  }
 }
 
 
@@ -517,29 +515,32 @@ void Report(void) {
   JsonDocument doc;
   char Buffer[2048];
 
+  uint8_t Power, SystemOpMode, Zone1ControlMode, Zone2ControlMode, TimerProhibit, Zone1ActiveInput, Zone2ActiveInput, ErrorCode, DHWForce, Holiday, ErrorCodeNum;
+
+
   doc[F("QTY")] = unitSettings.Quantity;
+  doc[F("Power")] = SystemPowerModeString[HeatPump.Status.Power];
+  doc[F("SystemOperationMode")] = SystemOperationModeString[HeatPump.Status.SystemOpMode];
+  doc[F("Zone1OperationMode")] = HeatingControlModeString[HeatPump.Status.Zone1ControlMode];
+  doc[F("Zone2OperationMode")] = HeatingControlModeString[HeatPump.Status.Zone2ControlMode];
+  doc[F("TimerProhibit")] = TimerModeString[HeatPump.Status.TimerProhibit];
   doc[F("Z1ActiveInput")] = HeatPump.Status.Zone1ActiveInput;
   doc[F("Z2ActiveInput")] = HeatPump.Status.Zone2ActiveInput;
   doc[F("Z1Setpoint")] = HeatPump.Status.SetpointZ1;
   doc[F("Z2Setpoint")] = HeatPump.Status.SetpointZ2;
   doc[F("ErrorCode")] = HeatPump.Status.ErrorCode;
+  doc[F("DHWForce")] = OFF_ON_String[HeatPump.Status.DHWForce];
+  doc[F("Holiday")] = OFF_ON_String[HeatPump.Status.Holiday];
+  doc[F("HolidayHrs")] = 0;  // Not identified yet
 
   doc[F("RC1Input")] = RCInput[0];
-  doc[F("RC1Rounded")] = RCTemp[0];
   doc[F("RC2Input")] = RCInput[1];
-  doc[F("RC2Rounded")] = RCTemp[1];
   doc[F("RC3Input")] = RCInput[2];
-  doc[F("RC3Rounded")] = RCTemp[2];
   doc[F("RC4Input")] = RCInput[3];
-  doc[F("RC4Rounded")] = RCTemp[3];
   doc[F("RC5Input")] = RCInput[4];
-  doc[F("RC5Rounded")] = RCTemp[4];
   doc[F("RC6Input")] = RCInput[5];
-  doc[F("RC6Rounded")] = RCTemp[5];
   doc[F("RC7Input")] = RCInput[6];
-  doc[F("RC7Rounded")] = RCTemp[6];
   doc[F("RC8Input")] = RCInput[7];
-  doc[F("RC8Rounded")] = RCTemp[7];
 
   doc[F("HB_ID")] = Heart_Value;
 

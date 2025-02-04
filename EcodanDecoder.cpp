@@ -138,29 +138,34 @@ void ECODANDECODER::Process0x6C(uint8_t *Buffer, EcodanStatus *Status) {
 
 
 void ECODANDECODER::Process0x68(uint8_t *Buffer, EcodanStatus *Status) {
-  uint8_t Zone1ActiveInput, Zone2ActiveInput, ErrorCode, ErrorCodeNum, DHWForce, SetpointZ1Temp, SetpointZ2Temp;
+  uint8_t Power, SystemOpMode, Zone1ControlMode, Zone2ControlMode, TimerProhibit, Zone1ActiveInput, Zone2ActiveInput, ErrorCode, DHWForce, Holiday, ErrorCodeNum;
+  uint8_t SetpointZ1Temp, SetpointZ2Temp;
 
-  Zone1ActiveInput = Buffer[1];
-  ErrorCode = Buffer[2];
+  Power = Buffer[1];
+  SystemOpMode = Buffer[2];
   SetpointZ1Temp = Buffer[3];
-  //Unknown = Buffer[4]; Holiday?
+  Zone1ControlMode = Buffer[4];
   DHWForce = Buffer[5];
-  //Unknown = Buffer[6]; Holiday?
-  //Unknown = Buffer[7];
+  Holiday = Buffer[6];
+  TimerProhibit = Buffer[7];
   //Unknown = Buffer[8];
   //Unknown = Buffer[9];
   ErrorCodeNum = Buffer[10];
   //Unknown = Buffer[11];
   SetpointZ2Temp = Buffer[12];
-  Zone2ActiveInput = Buffer[13];
+  Zone2ControlMode = Buffer[4];
 
-  Status->Zone1ActiveInput = Zone1ActiveInput;
-  Status->Zone2ActiveInput = Zone2ActiveInput;
-  Status->SetpointZ1 = ((SetpointZ1Temp - 128.0f) / 2);
+  Status->Power = Power;
+  Status->SystemOpMode = SystemOpMode;
+  Status->Zone1ControlMode = Zone1ControlMode;
+  Status->SetpointZ1 = ((SetpointZ1Temp - 128.0f) / 2);  
+  Status->TimerProhibit = TimerProhibit;
   Status->SetpointZ2 = ((SetpointZ2Temp - 128.0f) / 2);
+  Status->Zone2ControlMode = Zone2ControlMode;
   Status->ErrorCode = ErrorCode;
   Status->ErrorCodeNum = ErrorCodeNum;
   Status->DHWForce = DHWForce;
+  Status->Holiday = Holiday;
 }
 
 void ECODANDECODER::CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize) {

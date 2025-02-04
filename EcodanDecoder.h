@@ -24,6 +24,7 @@
 
 #define PACKET_SYNC 0xFC
 #define GET_REQUEST 0x48
+#define GET_INIT 0x32
 #define GET_RESPONSE 0x68
 #define GET_ABOUT_RESPONSE 0x7B
 #define CONNECT_REQUEST 0x5A
@@ -38,7 +39,38 @@
 
 #define PREAMBLESIZE 2
 
+#define SYSTEM_POWER_MODE_STANDBY 0
+#define SYSTEM_POWER_MODE_ON 1
+const char SystemPowerModeString[2][8] = { "Standby", "On" };
 
+#define SYSTEM_OPERATION_MODE_OFF 0
+#define SYSTEM_OPERATION_MODE_HOT_WATER 1
+#define SYSTEM_OPERATION_MODE_HEATING 2
+#define SYSTEM_OPERATION_MODE_COOLING 3
+#define SYSTEM_OPERATION_MODE_ZERO_V 4
+#define SYSTEM_OPERATION_MODE_FROST_PROTECT 5
+#define SYSTEM_OPERATION_MODE_LEGIONELLA 6
+#define SYSTEM_OPERATION_MODE_HEATING_ECO 7
+const char SystemOperationModeString[8][14] = { "Off", "Hot Water", "Heating", "Cooling", "Zero V", "Frost Protect", "Legionella", "Heating Eco" };
+
+
+#define HEATING_CONTROL_MODE_ZONE_TEMP 0x00
+#define HEATING_CONTROL_MODE_FLOW_TEMP 0x01
+#define HEATING_CONTROL_MODE_COMPENSATION 0x02
+#define HEATING_CONTROL_MODE_COOL_ZONE_TEMP 0x03
+#define HEATING_CONTROL_MODE_COOL_FLOW_TEMP 0x04
+#define HEATING_CONTROL_MODE_DRY_UP 0x05
+const char HeatingControlModeString[6][25] = { "Heating Auto Adapt", "Heating Fixed Flow", "Heating Compensation", "Cooling Auto Adapt", "Cooling Fixed Flow", "Dry Up" };
+
+#define HOLIDAY_MODE_OFF 0
+#define HOLIDAY_MODE_ON 1
+const char HolidayModetString[2][4] = { "Off", "On" };
+
+#define ITEM_OFF 0
+#define ITEM_ON 1
+const char OFF_ON_String[2][4] = { "Off", "On" };
+
+const char TimerModeString[7][34] = {"None", "TBC", "TBC", "TBC", "Timer Mode Heating", "Prohibit DHW, Timer Mode Heating", "Prohibit Heating"};
 
 
 typedef struct _MessgeStruct {
@@ -51,7 +83,7 @@ typedef struct _MessgeStruct {
 } MessageStruct;
 
 typedef struct _EcodanStatus {
-  uint16_t Zone1ActiveInput, Zone2ActiveInput, ErrorCode, DHWForce, ErrorCodeNum;
+  uint8_t Power, SystemOpMode, Zone1ControlMode, Zone2ControlMode, TimerProhibit, Zone1ActiveInput, Zone2ActiveInput, ErrorCode, DHWForce, Holiday, ErrorCodeNum;
   float SetpointZ1, SetpointZ2;
 } EcodanStatus;
 

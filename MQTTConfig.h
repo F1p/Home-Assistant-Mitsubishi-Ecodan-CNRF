@@ -8,24 +8,10 @@ String MQTT_STATUS_TEMP = MQTT_STATUS + "/Temperature";
 String MQTT_STATUS_WIFISTATUS = MQTT_STATUS + "/WiFiStatus";
 
 String MQTT_COMMAND_QTY = MQTT_COMMAND + "/QTY";
-String MQTT_COMMAND_C1 = MQTT_COMMAND + "/RC1";
-String MQTT_COMMAND_C2 = MQTT_COMMAND + "/RC2";
-String MQTT_COMMAND_C3 = MQTT_COMMAND + "/RC3";
-String MQTT_COMMAND_C4 = MQTT_COMMAND + "/RC4";
-String MQTT_COMMAND_C5 = MQTT_COMMAND + "/RC5";
-String MQTT_COMMAND_C6 = MQTT_COMMAND + "/RC6";
-String MQTT_COMMAND_C7 = MQTT_COMMAND + "/RC7";
-String MQTT_COMMAND_C8 = MQTT_COMMAND + "/RC8";
+String MQTT_COMMAND_RC = MQTT_COMMAND + "/RC";
 
 String MQTTCommandControllerQTY = MQTT_COMMAND_QTY;
-String MQTTCommandController1Current = MQTT_COMMAND_C1;
-String MQTTCommandController2Current = MQTT_COMMAND_C2;
-String MQTTCommandController3Current = MQTT_COMMAND_C3;
-String MQTTCommandController4Current = MQTT_COMMAND_C4;
-String MQTTCommandController5Current = MQTT_COMMAND_C5;
-String MQTTCommandController6Current = MQTT_COMMAND_C6;
-String MQTTCommandController7Current = MQTT_COMMAND_C7;
-String MQTTCommandController8Current = MQTT_COMMAND_C8;
+String MQTTCommandControllerRC = MQTT_COMMAND_RC;
 
 String MQTT_2_BASETOPIC = "Ecodan/CNRF";
 
@@ -37,24 +23,10 @@ String MQTT_2_STATUS_TEMP = MQTT_2_STATUS + "/Temperature";
 String MQTT_2_STATUS_WIFISTATUS = MQTT_2_STATUS + "/WiFiStatus";
 
 String MQTT_2_COMMAND_QTY = MQTT_2_COMMAND + "/QTY";
-String MQTT_2_COMMAND_C1 = MQTT_2_COMMAND + "/RC1";
-String MQTT_2_COMMAND_C2 = MQTT_2_COMMAND + "/RC2";
-String MQTT_2_COMMAND_C3 = MQTT_2_COMMAND + "/RC3";
-String MQTT_2_COMMAND_C4 = MQTT_2_COMMAND + "/RC4";
-String MQTT_2_COMMAND_C5 = MQTT_2_COMMAND + "/RC5";
-String MQTT_2_COMMAND_C6 = MQTT_2_COMMAND + "/RC6";
-String MQTT_2_COMMAND_C7 = MQTT_2_COMMAND + "/RC7";
-String MQTT_2_COMMAND_C8 = MQTT_2_COMMAND + "/RC8";
+String MQTT_2_COMMAND_RC = MQTT_2_COMMAND + "/RC";
 
 String MQTTCommand2ControllerQTY = MQTT_2_COMMAND_QTY;
-String MQTTCommand2Controller1Current = MQTT_2_COMMAND_C1;
-String MQTTCommand2Controller2Current = MQTT_2_COMMAND_C2;
-String MQTTCommand2Controller3Current = MQTT_2_COMMAND_C3;
-String MQTTCommand2Controller4Current = MQTT_2_COMMAND_C4;
-String MQTTCommand2Controller5Current = MQTT_2_COMMAND_C5;
-String MQTTCommand2Controller6Current = MQTT_2_COMMAND_C6;
-String MQTTCommand2Controller7Current = MQTT_2_COMMAND_C7;
-String MQTTCommand2Controller8Current = MQTT_2_COMMAND_C8;
+String MQTTCommand2ControllerRC = MQTT_2_COMMAND_RC;
 
 
 
@@ -242,24 +214,10 @@ void readSettingsFromConfig() {
     MQTT_STATUS_WIFISTATUS = MQTT_STATUS + "/WiFiStatus";
 
     MQTT_COMMAND_QTY = MQTT_COMMAND + "/QTY";
-    MQTT_COMMAND_C1 = MQTT_COMMAND + "/RC1";
-    MQTT_COMMAND_C2 = MQTT_COMMAND + "/RC2";
-    MQTT_COMMAND_C3 = MQTT_COMMAND + "/RC3";
-    MQTT_COMMAND_C4 = MQTT_COMMAND + "/RC4";
-    MQTT_COMMAND_C5 = MQTT_COMMAND + "/RC5";
-    MQTT_COMMAND_C6 = MQTT_COMMAND + "/RC6";
-    MQTT_COMMAND_C7 = MQTT_COMMAND + "/RC7";
-    MQTT_COMMAND_C8 = MQTT_COMMAND + "/RC8";
+    MQTT_COMMAND_RC = MQTT_COMMAND + "/RC";
 
     MQTTCommandControllerQTY = MQTT_COMMAND_QTY;
-    MQTTCommandController1Current = MQTT_COMMAND_C1;
-    MQTTCommandController2Current = MQTT_COMMAND_C2;
-    MQTTCommandController3Current = MQTT_COMMAND_C3;
-    MQTTCommandController4Current = MQTT_COMMAND_C4;
-    MQTTCommandController5Current = MQTT_COMMAND_C5;
-    MQTTCommandController6Current = MQTT_COMMAND_C6;
-    MQTTCommandController7Current = MQTT_COMMAND_C7;
-    MQTTCommandController8Current = MQTT_COMMAND_C8;
+    MQTTCommandControllerRC = MQTT_COMMAND_RC;
   }
 
 
@@ -423,7 +381,7 @@ void readSettingsFromConfig() {
       Config["name"] = String(MQTT_SENSOR_NAME[i]);
 
       // Sensors
-      if (i >= 0 && i < 5) {
+      if (i >= 0 && i < 16) {
         Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[MQTT_TOPIC_POS[i]]);                                    // Needs a positioner
         if (MQTT_UNITS_POS[i] > 0) { Config["unit_of_measurement"] = String(MQTT_SENSOR_UNITS[MQTT_UNITS_POS[i]]); }  // Don't send nothing
         Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
@@ -432,7 +390,13 @@ void readSettingsFromConfig() {
         MQTT_DISCOVERY_TOPIC = "homeassistant/sensor/";
       }
 
-      if (i >= 5 && i < 6) {
+      // Climate
+      if (i >= 16 && i < 18) {
+        MQTT_DISCOVERY_TOPIC = "homeassistant/climate/";
+      }
+
+      // QTY Select
+      if (i >= 18 && i < 19) {
         Config["command_topic"] = BASETOPIC + String(MQTT_TOPIC[3]);
         Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[2]);
         Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
@@ -452,15 +416,16 @@ void readSettingsFromConfig() {
         MQTT_DISCOVERY_TOPIC = "homeassistant/select/";
       }
 
-      // RC Input
-      if (i >= 6 && i < 14) {
+      // Number
+      if (i >= 19 && i < 27) {
         Config["min"] = 0;
         Config["max"] = 50;
         Config["mode"] = "box";
         Config["platform"] = "number";
         Config["step"] = 0.01;
         Config["unit_of_measurement"] = "°C";
-        Config["command_topic"] = BASETOPIC + String(MQTT_TOPIC[i-2]);
+        Config["command_topic"] = BASETOPIC + String(MQTT_TOPIC[4]);
+        Config["command_template"] = String(MQTT_CMD_TEMPLATE[0]) + String(i - 18) + String(MQTT_CMD_TEMPLATE[1]);
         Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[MQTT_TOPIC_POS[i]]);
         Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
         Config["icon"] = String(MQTT_MDI_ICONS[i]);
@@ -504,14 +469,7 @@ void readSettingsFromConfig() {
     delay(50);
 
     MQTTClient1.subscribe(MQTTCommandControllerQTY.c_str());
-    MQTTClient1.subscribe(MQTTCommandController1Current.c_str());
-    MQTTClient1.subscribe(MQTTCommandController2Current.c_str());
-    MQTTClient1.subscribe(MQTTCommandController3Current.c_str());
-    MQTTClient1.subscribe(MQTTCommandController4Current.c_str());
-    MQTTClient1.subscribe(MQTTCommandController5Current.c_str());
-    MQTTClient1.subscribe(MQTTCommandController6Current.c_str());
-    MQTTClient1.subscribe(MQTTCommandController7Current.c_str());
-    MQTTClient1.subscribe(MQTTCommandController8Current.c_str());
+    MQTTClient1.subscribe(MQTTCommandControllerRC.c_str());
 
     delay(10);
     PublishDiscoveryTopics(1, MQTT_BASETOPIC);
@@ -621,24 +579,10 @@ void readSettingsFromConfig() {
     MQTT_2_STATUS_WIFISTATUS = MQTT_2_STATUS + "/WiFiStatus";
 
     MQTT_2_COMMAND_QTY = MQTT_2_COMMAND + "/QTY";
-    MQTT_2_COMMAND_C1 = MQTT_2_COMMAND + "/RC1";
-    MQTT_2_COMMAND_C2 = MQTT_2_COMMAND + "/RC2";
-    MQTT_2_COMMAND_C3 = MQTT_2_COMMAND + "/RC3";
-    MQTT_2_COMMAND_C4 = MQTT_2_COMMAND + "/RC4";
-    MQTT_2_COMMAND_C5 = MQTT_2_COMMAND + "/RC5";
-    MQTT_2_COMMAND_C6 = MQTT_2_COMMAND + "/RC6";
-    MQTT_2_COMMAND_C7 = MQTT_2_COMMAND + "/RC7";
-    MQTT_2_COMMAND_C8 = MQTT_2_COMMAND + "/RC8";
+    MQTT_2_COMMAND_RC = MQTT_2_COMMAND + "/RC";
 
     MQTTCommand2ControllerQTY = MQTT_2_COMMAND_QTY;
-    MQTTCommand2Controller1Current = MQTT_2_COMMAND_C1;
-    MQTTCommand2Controller2Current = MQTT_2_COMMAND_C2;
-    MQTTCommand2Controller3Current = MQTT_2_COMMAND_C3;
-    MQTTCommand2Controller4Current = MQTT_2_COMMAND_C4;
-    MQTTCommand2Controller5Current = MQTT_2_COMMAND_C5;
-    MQTTCommand2Controller6Current = MQTT_2_COMMAND_C6;
-    MQTTCommand2Controller7Current = MQTT_2_COMMAND_C7;
-    MQTTCommand2Controller8Current = MQTT_2_COMMAND_C8;
+    MQTTCommand2ControllerRC = MQTT_2_COMMAND_RC;
   }
 
 
@@ -661,14 +605,7 @@ void readSettingsFromConfig() {
     delay(50);
 
     MQTTClient2.subscribe(MQTTCommand2ControllerQTY.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller1Current.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller2Current.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller3Current.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller4Current.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller5Current.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller6Current.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller7Current.c_str());
-    MQTTClient2.subscribe(MQTTCommand2Controller8Current.c_str());
+    MQTTClient2.subscribe(MQTTCommand2ControllerRC.c_str());
 
     delay(10);
     PublishDiscoveryTopics(2, MQTT_2_BASETOPIC);

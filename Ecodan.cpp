@@ -25,7 +25,6 @@ int ControllerQTY;
 
 // Initialisation Commands
 uint8_t Init3[] = { 0xfc, 0x5a, 0x04, 0x03, 0x02, 0xca, 0x01, 0xd2 };  // CNRF Connect
-uint8_t Init4[] = { 0xfc, 0x4c, 0x04, 0x03, 0x10, 0x32, 0x03, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x69 };
 
 
 unsigned long lastmsgdispatchedMillis = 0;  // variable for comparing millis counter
@@ -109,8 +108,36 @@ void ECODAN::StatusStateMachine(void) {
         ECODANDECODER::SetPayloadByte(0xff, i + 1);
       }
     }
-    ECODANDECODER::SetPayloadByte(0x03, 9);
-    ECODANDECODER::SetPayloadByte(0xff, 10);
+
+    // Controller Quantity Bitmask
+    switch (ControllerQTY) {
+      case (1):
+        ECODANDECODER::SetPayloadByte(0x01, 9);
+        break;
+      case (2):
+        ECODANDECODER::SetPayloadByte(0x03, 9);
+        break;
+      case (3):
+        ECODANDECODER::SetPayloadByte(0x07, 9);
+        break;
+      case (4):
+        ECODANDECODER::SetPayloadByte(0x0F, 9);
+        break;
+      case (5):
+        ECODANDECODER::SetPayloadByte(0x1F, 9);
+        break;
+      case (6):
+        ECODANDECODER::SetPayloadByte(0x3F, 9);
+        break;
+      case (7):
+        ECODANDECODER::SetPayloadByte(0x7F, 9);
+        break;
+      case (8):
+        ECODANDECODER::SetPayloadByte(0xFF, 9);
+        break;
+    }
+
+    ECODANDECODER::SetPayloadByte(0xff, 10);  // Unknown exactly what this is...
 
     CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
     DeviceStream->write(Buffer, CommandSize);
@@ -142,9 +169,58 @@ void ECODAN::Connect(void) {
 }
 
 void ECODAN::ConfigConnect(void) {
+  uint8_t Buffer[COMMANDSIZE];
+  uint8_t CommandSize;
+  uint8_t i;
+
   DEBUG_PRINTLN("Sending Config Request to Heat Pump...");
-  DeviceStream->write(Init4, 22);
+  // Config Builder
+  ECODANDECODER::CreateBlankTxMessage(GET_INIT, 0x10);
+
+  // Controller Quantity Bitmask
+  switch (ControllerQTY) {
+    case (1):
+      ECODANDECODER::SetPayloadByte(0x01, 1);
+      break;
+    case (2):
+      ECODANDECODER::SetPayloadByte(0x03, 1);
+      break;
+    case (3):
+      ECODANDECODER::SetPayloadByte(0x07, 1);
+      break;
+    case (4):
+      ECODANDECODER::SetPayloadByte(0x0F, 1);
+      break;
+    case (5):
+      ECODANDECODER::SetPayloadByte(0x1F, 1);
+      break;
+    case (6):
+      ECODANDECODER::SetPayloadByte(0x3F, 1);
+      break;
+    case (7):
+      ECODANDECODER::SetPayloadByte(0x7F, 1);
+      break;
+    case (8):
+      ECODANDECODER::SetPayloadByte(0xFF, 1);
+      break;
+  }
+
+  ECODANDECODER::SetPayloadByte(0xff, 2);  // Unknown exactly what this is...
+
+  CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
+  DeviceStream->write(Buffer, CommandSize);
+  lastmsgdispatchedMillis = millis();
+
   DeviceStream->flush();
+
+  for (i = 0; i < CommandSize; i++) {
+    if (Buffer[i] < 0x10) DEBUG_PRINT(F("0"));
+    DEBUG_PRINT(String(Buffer[i], HEX));
+    DEBUG_PRINT(F(", "));
+  }
+  DEBUG_PRINTLN();
+
+
   Process();
 }
 
