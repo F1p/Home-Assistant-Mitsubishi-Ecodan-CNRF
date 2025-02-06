@@ -54,7 +54,7 @@
 * RCS: Main thermistor selection
     * 0xff : 1111 1111 TH1 (this prevents current temp syncs)
     * 0xf1 : 0000 0001 RC1 for Z1
-    * 0x21 : 0010 0001 (RC1 for Z1 and RC2 for Z2 ?)* unk2 : Unknown 2
+    * 0x21 : 0010 0001 (RC1 for Z1 and RC2 for Z2 ?)
 * unk : Unknown
 * EC : Error Code
 
