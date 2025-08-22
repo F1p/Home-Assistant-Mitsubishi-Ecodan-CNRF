@@ -71,7 +71,7 @@ void readSettingsFromConfig() {
 
             // Build in safety check, otherwise ESP will crash out and you can't get back in
             if (doc.containsKey(mqttSettings.wm_device_id_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_device_id_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_device_id_identifier]) + 1) <= deviceId_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_device_id_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_device_id_identifier]) + 1) <= deviceId_max_length)) {
                 strcpy(mqttSettings.deviceId, doc[mqttSettings.wm_device_id_identifier]);
               }
             } else {  // For upgrading from <5.3.1, create the entry
@@ -85,39 +85,39 @@ void readSettingsFromConfig() {
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
             if (doc.containsKey(mqttSettings.wm_mqtt_client_id_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt_client_id_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_client_id_identifier]) + 1) <= clientId_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt_client_id_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt_client_id_identifier]) + 1) <= clientId_max_length)) {
                 strcpy(mqttSettings.clientId, doc[mqttSettings.wm_mqtt_client_id_identifier]);
               }
             }
             if (doc.containsKey(mqttSettings.wm_mqtt_hostname_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt_hostname_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_hostname_identifier]) + 1) <= hostname_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt_hostname_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt_hostname_identifier]) + 1) <= hostname_max_length)) {
                 strcpy(mqttSettings.hostname, doc[mqttSettings.wm_mqtt_hostname_identifier]);
               }
             }
             if (doc.containsKey(mqttSettings.wm_mqtt_port_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt_port_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_port_identifier]) + 1) <= port_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt_port_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt_port_identifier]) + 1) <= port_max_length)) {
                 strcpy(mqttSettings.port, doc[mqttSettings.wm_mqtt_port_identifier]);
               }
             }
             if (doc.containsKey(mqttSettings.wm_mqtt_user_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt_user_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_user_identifier]) + 1) <= user_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt_user_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt_user_identifier]) + 1) <= user_max_length)) {
                 strcpy(mqttSettings.user, doc[mqttSettings.wm_mqtt_user_identifier]);
               }
             }
             if (doc.containsKey(mqttSettings.wm_mqtt_password_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt_password_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_password_identifier]) + 1) <= password_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt_password_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt_password_identifier]) + 1) <= password_max_length)) {
                 strcpy(mqttSettings.password, doc[mqttSettings.wm_mqtt_password_identifier]);
               }
             }
             if (doc.containsKey(mqttSettings.wm_mqtt_basetopic_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt_basetopic_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt_basetopic_identifier]) + 1) <= basetopic_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt_basetopic_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt_basetopic_identifier]) + 1) <= basetopic_max_length)) {
                 strcpy(mqttSettings.baseTopic, doc[mqttSettings.wm_mqtt_basetopic_identifier]);
                 MQTT_BASETOPIC = mqttSettings.baseTopic;
               }
             }
             // MQTT Stream 2
             if (doc.containsKey(mqttSettings.wm_mqtt2_client_id_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt2_client_id_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt2_client_id_identifier]) + 1) <= clientId_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt2_client_id_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt2_client_id_identifier]) + 1) <= clientId_max_length)) {
                 strcpy(mqttSettings.clientId2, doc[mqttSettings.wm_mqtt2_client_id_identifier]);
               }
             } else {  // For upgrading from <6.0.0, create the entry
@@ -126,7 +126,7 @@ void readSettingsFromConfig() {
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
             if (doc.containsKey(mqttSettings.wm_mqtt2_hostname_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt2_hostname_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt2_hostname_identifier]) + 1) <= hostname_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt2_hostname_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt2_hostname_identifier]) + 1) <= hostname_max_length)) {
                 strcpy(mqttSettings.hostname2, doc[mqttSettings.wm_mqtt2_hostname_identifier]);
               }
             } else {  // For upgrading from <6.0.0, create the entry
@@ -135,7 +135,7 @@ void readSettingsFromConfig() {
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
             if (doc.containsKey(mqttSettings.wm_mqtt2_port_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt2_port_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt2_port_identifier]) + 1) <= port_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt2_port_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt2_port_identifier]) + 1) <= port_max_length)) {
                 strcpy(mqttSettings.port2, doc[mqttSettings.wm_mqtt2_port_identifier]);
               }
             } else {  // For upgrading from <6.0.0, create the entry
@@ -144,7 +144,7 @@ void readSettingsFromConfig() {
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
             if (doc.containsKey(mqttSettings.wm_mqtt2_user_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt2_user_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt2_user_identifier]) + 1) <= user_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt2_user_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt2_user_identifier]) + 1) <= user_max_length)) {
                 strcpy(mqttSettings.user2, doc[mqttSettings.wm_mqtt2_user_identifier]);
               }
             } else {  // For upgrading from <6.0.0, create the entry
@@ -153,7 +153,7 @@ void readSettingsFromConfig() {
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
             if (doc.containsKey(mqttSettings.wm_mqtt2_password_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt2_password_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt2_password_identifier]) + 1) <= password_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt2_password_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt2_password_identifier]) + 1) <= password_max_length)) {
                 strcpy(mqttSettings.password2, doc[mqttSettings.wm_mqtt2_password_identifier]);
               }
             } else {  // For upgrading from <6.0.0, create the entry
@@ -162,7 +162,7 @@ void readSettingsFromConfig() {
               shouldSaveConfig = true;  // Save config after exit to update the file
             }
             if (doc.containsKey(mqttSettings.wm_mqtt2_basetopic_identifier)) {
-              if ((sizeof(doc[mqttSettings.wm_mqtt2_basetopic_identifier]) > 0) && ((sizeof(doc[mqttSettings.wm_mqtt2_basetopic_identifier]) + 1) <= basetopic_max_length)) {
+              if ((strlen(doc[mqttSettings.wm_mqtt2_basetopic_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt2_basetopic_identifier]) + 1) <= basetopic_max_length)) {
                 strcpy(mqttSettings.baseTopic2, doc[mqttSettings.wm_mqtt2_basetopic_identifier]);
                 MQTT_2_BASETOPIC = mqttSettings.baseTopic2;
               }

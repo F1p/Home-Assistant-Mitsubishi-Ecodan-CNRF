@@ -49,7 +49,7 @@ extern int ControllerQTY;
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "1.1.0";
+String FirmwareVersion = "1.1.2";
 
 
 #ifdef ESP8266  // Define the Witty ESP8266 Serial Pins
@@ -199,7 +199,7 @@ void PublishAllReports(void);
 
 
 TimerCallBack HeatPumpQuery1(500, HeatPumpQueryStateEngine);  // Set to 400ms (Safe), 320-350ms best time between messages
-TimerCallBack HeatPumpQuery2(5000, HeatPumpKeepAlive);        // Set to 20-30s for heat pump query frequency
+TimerCallBack HeatPumpQuery2(2000, HeatPumpKeepAlive);        // Set to 20-30s for heat pump query frequency
 TimerCallBack HeatPumpQuery3(30000, handleMQTTState);         // Re-connect attempt timer if MQTT is not online
 TimerCallBack HeatPumpQuery4(30000, handleMQTT2State);        // Re-connect attempt timer if MQTT Stream 2 is not online
 TimerCallBack HeatPumpQuery5(30000, PublishAllReports);       // Set to 20-30s for heat pump query frequency
