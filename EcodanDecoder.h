@@ -51,7 +51,7 @@ const char SystemPowerModeString[2][8] = { "Standby", "On" };
 #define SYSTEM_OPERATION_MODE_FROST_PROTECT 5
 #define SYSTEM_OPERATION_MODE_LEGIONELLA 6
 #define SYSTEM_OPERATION_MODE_HEATING_ECO 7
-const char SystemOperationModeString[8][14] = { "Off", "Hot Water", "Heating", "Cooling", "Zero V", "Frost Protect", "Legionella", "Heating Eco" };
+const char SystemOperationModeString[8][14] = { "off", "Hot Water", "heating", "cooling", "Zero V", "Frost Protect", "Legionella", "Heating Eco" };
 
 
 #define HEATING_CONTROL_MODE_ZONE_TEMP 0x00
