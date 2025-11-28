@@ -426,7 +426,7 @@ void readSettingsFromConfig() {
         Config["unit_of_measurement"] = "°C";
         Config["command_topic"] = BASETOPIC + String(MQTT_TOPIC[4]);
         Config["command_template"] = String(MQTT_CMD_TEMPLATE[0]) + String(i - 18) + String(MQTT_CMD_TEMPLATE[1]);
-        Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[MQTT_TOPIC_POS[i]]);
+        Config["state_topic"] = BASETOPIC + String(MQTT_TOPIC[2]);
         Config["value_template"] = String(MQTT_SENSOR_VALUE_TEMPLATE[i]);
         Config["icon"] = String(MQTT_MDI_ICONS[i]);
 

@@ -49,7 +49,7 @@ extern int ControllerQTY;
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "1.1.2";
+String FirmwareVersion = "1.1.2-h2";
 
 
 #ifdef ESP8266  // Define the Witty ESP8266 Serial Pins
