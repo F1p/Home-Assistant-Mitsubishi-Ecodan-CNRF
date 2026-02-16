@@ -278,6 +278,57 @@ void readSettingsFromConfig() {
     saveConfig();
   }
 
+  // Handle Webhook Callbacks
+  void handleRoute() {
+    if (wifiManager.server->hasArg("rc1")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc1");
+      RCInput[0] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    }
+    if (wifiManager.server->hasArg("rc2")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc2");
+      RCInput[1] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    }
+    if (wifiManager.server->hasArg("rc3")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc3");
+      RCInput[2] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    }
+    if (wifiManager.server->hasArg("rc4")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc4");
+      RCInput[3] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    }
+    if (wifiManager.server->hasArg("rc5")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc5");
+      RCInput[4] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    }
+    if (wifiManager.server->hasArg("rc6")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc6");
+      RCInput[5] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    }
+    if (wifiManager.server->hasArg("rc7")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc7");
+      RCInput[6] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    }
+    if (wifiManager.server->hasArg("rc8")) {  // Pull Argument room1
+      String input = wifiManager.server->arg("rc8");
+      RCInput[7] = input.toFloat();
+      wifiManager.server->send(200, "text/plain", "success");
+    } else {
+      wifiManager.server->send(400, "text/plain", "failed");
+    }
+  }
+
+  // Callback for webhooks
+  void bindServerCallback() {
+    wifiManager.server->on("/webhook", handleRoute);
+  }
+
   void initializeWifiManager() {
     DEBUG_PRINTLN("Starting WiFi Manager");
     // Reset Wifi settings for testing
@@ -329,6 +380,7 @@ void readSettingsFromConfig() {
     wifiManager.setSaveConfigCallback(saveConfigCallback);  // Set config save callback
     wifiManager.setSaveParamsCallback(saveConfigCallback);  // Set param save callback
     wifiManager.setAPClientCheck(true);                     // avoid timeout if client connected to softap
+    wifiManager.setWebServerCallback(bindServerCallback);   // Callback for the webhook route
 
 #ifndef ARDUINO_WT32_ETH01
     wifiManager.setConfigPortalTimeout(120);  // Timeout before launching the config portal (WiFi Only)

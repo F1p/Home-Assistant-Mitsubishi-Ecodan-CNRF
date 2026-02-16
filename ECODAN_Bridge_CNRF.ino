@@ -31,6 +31,7 @@
 #ifdef ESP32
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ESPmDNS.h>
 #endif
 #ifdef ARDUINO_WT32_ETH01
 #include <ETH.h>
@@ -49,7 +50,7 @@ extern int ControllerQTY;
 #include <ESPTelnet.h>
 #include "Ecodan.h"
 
-String FirmwareVersion = "1.1.2-h2";
+String FirmwareVersion = "1.2.0";
 
 
 #ifdef ESP8266  // Define the Witty ESP8266 Serial Pins
@@ -185,6 +186,8 @@ WiFiManagerParameter custom_mqtt2_basetopic("basetopic2", "Secondary MQTT Base T
 WiFiManagerParameter custom_device_id("device_id", "<hr>Device ID<br><font size='0.8em'>Only modify if upgrading or changing hardware, copy your previous device ID over</font>", "TEMP", deviceId_max_length);
 
 
+float RCInput[7];
+
 #include "TimerCallBack.h"
 #include "Debug.h"
 #include "MQTTDiscovery.h"
@@ -216,7 +219,6 @@ bool FTCOneShot1 = false;
 bool FTCOneShot2 = false;
 bool CableConnected = true;
 bool WiFiConnectedLastLoop = false;
-float RCInput[7];
 
 #ifdef ARDUINO_WT32_ETH01
 static bool eth_connected = false;
@@ -282,6 +284,8 @@ void setup() {
 
 
   wifiManager.startWebPortal();
+  MDNS.begin("heatpump-cnrf");
+  MDNS.addService("http", "tcp", 80);
   for (int i = 0; i < 8; i++) {
     RCInput[i] = 18.0;
     RCTemp[i] = RCInput[i];
@@ -452,6 +456,37 @@ void HeatPumpQueryStateEngine(void) {
   }
 }
 
+void handleWebhook() {
+  // Check if the parameter "rc1" exists in the URL
+  if (wifiManager.server->hasArg("rc1")) {
+    String input = wifiManager.server->arg("rc1");
+
+    // Convert string input to float
+    RCInput[0] = input.toFloat();
+
+    DEBUG_PRINT("Received RC1 update: ");
+    DEBUG_PRINTLN(RCInput[0]);  // Print with 2 decimal places
+
+    // Return success message
+    String response = "{\"status\":\"success\", \"updated_rc1\":" + String(RCInput[0]) + "}";
+    wifiManager.server->send(200, "application/json", response);
+  } else if (wifiManager.server->hasArg("rc2")) {
+    String input = wifiManager.server->arg("rc2");
+
+    // Convert string input to float
+    RCInput[1] = input.toFloat();
+
+    DEBUG_PRINT("Received RC2 update: ");
+    DEBUG_PRINTLN(RCInput[1]);  // Print with 2 decimal places
+
+    // Return success message
+    String response = "{\"status\":\"success\", \"updated_rc2\":" + String(RCInput[1]) + "}";
+    wifiManager.server->send(200, "application/json", response);
+  } else {
+    // Return error if parameter is missing
+    wifiManager.server->send(400, "application/json", "{\"error\":\"Missing rc parameter\"}");
+  }
+}
 
 
 
@@ -497,8 +532,8 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
       if (type == "rc") {
         int action = doc["action"];
         float value = doc["value"];
-        RCInput[action-1] = value;
-        RCTemp[action-1] = roundToNearestHalf(value);
+        RCInput[action - 1] = value;
+        RCTemp[action - 1] = roundToNearestHalf(value);
       }
       // DHW
       if (type == "dhw") {}
