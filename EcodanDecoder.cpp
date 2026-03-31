@@ -17,6 +17,18 @@
 #include "EcodanDecoder.h"
 #include <cstdio>
 
+uint8_t Array0x4C[] = {};
+uint8_t Array0x6C[] = {};
+uint8_t Array0x48[] = {};
+uint8_t Array0x68[] = {};
+uint8_t Array0x49[] = {};
+uint8_t Array0x69[] = {};
+uint8_t Array0x4A[] = {};
+uint8_t Array0x6A[] = {};
+uint8_t Array0x4B[] = {};
+uint8_t Array0x6B[] = {};
+
+uint8_t BufferArray[][17] = { {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {} };
 
 
 ECODANDECODER::ECODANDECODER(void) {
@@ -36,8 +48,17 @@ uint8_t ECODANDECODER::Process(uint8_t c) {
     if (RxMessage.PacketType == INIT_RESPONSE) {
       Process0x6C(RxMessage.Payload, &Status);
     }
-    if (RxMessage.PacketType == GET_RESPONSE) {
+    else if (RxMessage.PacketType == GET_RESPONSE) {
       Process0x68(RxMessage.Payload, &Status);
+    }
+    else if (RxMessage.PacketType == SET_TEMP_RESPONSE) {
+      Process0x69(RxMessage.Payload, &Status);
+    }
+    else if (RxMessage.PacketType == SET_DHW_RESPONSE) {
+      Process0x6A(RxMessage.Payload, &Status);
+    }
+    else if (RxMessage.PacketType == SET_HOL_RESPONSE) {
+      Process0x6B(RxMessage.Payload, &Status);
     }
   }
   return ReturnValue;
@@ -57,19 +78,29 @@ uint8_t ECODANDECODER::BuildRxMessage(MessageStruct *Message, uint8_t c) {
 
       case 1:
         switch (c) {
-          case GET_REQUEST:
-            break;
-          case GET_RESPONSE:
-            break;
-          case CONNECT_REQUEST:
-            break;
-          case CONNECT_RESPONSE:
-            break;
           case INIT_REQUEST:
             break;
           case INIT_RESPONSE:
             break;
-          case GET_ABOUT_RESPONSE:
+          case GET_REQUEST:
+            break;
+          case GET_RESPONSE:
+            break;
+          case SET_TEMP:
+            break;
+          case SET_TEMP_RESPONSE:
+            break;
+          case SET_DHW:
+            break;
+          case SET_DHW_RESPONSE:
+            break;
+          case SET_HOL:
+            break;
+          case SET_HOL_RESPONSE:
+            break;
+          case CONNECT_REQUEST:
+            break;
+          case CONNECT_RESPONSE:
             break;
           default:
             //Serial.println("Unknown PacketType");
@@ -134,12 +165,27 @@ uint8_t ECODANDECODER::BuildRxMessage(MessageStruct *Message, uint8_t c) {
 }
 
 void ECODANDECODER::Process0x6C(uint8_t *Buffer, EcodanStatus *Status) {
+  bool Write_To_Ecodan_OK;
+  Write_To_Ecodan_OK = true;             // For de-queue
+  Status->Write_To_Ecodan_OK = Write_To_Ecodan_OK;
+
+  for (int i = 1; i < 16; i++) {
+    Array0x6C[i] = Buffer[i];
+  }
 }
 
 
 void ECODANDECODER::Process0x68(uint8_t *Buffer, EcodanStatus *Status) {
   uint8_t Power, SystemOpMode, Zone1ControlMode, Zone2ControlMode, TimerProhibit, Zone1ActiveInput, Zone2ActiveInput, ErrorCode, DHWForce, Holiday, ErrorCodeNum;
   uint8_t SetpointZ1Temp, SetpointZ2Temp;
+  bool Write_To_Ecodan_OK;
+  Write_To_Ecodan_OK = true;             // For de-queue
+  Status->Write_To_Ecodan_OK = Write_To_Ecodan_OK;
+
+  
+  for (int i = 1; i < 16; i++) {
+    Array0x68[i] = Buffer[i];
+  }
 
   Power = Buffer[1];
   SystemOpMode = Buffer[2];
@@ -168,6 +214,37 @@ void ECODANDECODER::Process0x68(uint8_t *Buffer, EcodanStatus *Status) {
   Status->Holiday = Holiday;
 }
 
+void ECODANDECODER::Process0x6A(uint8_t *Buffer, EcodanStatus *Status) {
+  bool Write_To_Ecodan_OK;
+  Write_To_Ecodan_OK = true;             // For de-queue
+  Status->Write_To_Ecodan_OK = Write_To_Ecodan_OK;
+
+  for (int i = 1; i < 16; i++) {
+    Array0x6B[i] = Buffer[i];
+  }
+}
+
+void ECODANDECODER::Process0x69(uint8_t *Buffer, EcodanStatus *Status) {
+  bool Write_To_Ecodan_OK;
+  Write_To_Ecodan_OK = true;             // For de-queue
+  Status->Write_To_Ecodan_OK = Write_To_Ecodan_OK;
+
+  for (int i = 1; i < 16; i++) {
+    Array0x69[i] = Buffer[i];
+  }
+}
+
+void ECODANDECODER::Process0x6B(uint8_t *Buffer, EcodanStatus *Status) {
+  bool Write_To_Ecodan_OK;
+  Write_To_Ecodan_OK = true;             // For de-queue
+  Status->Write_To_Ecodan_OK = Write_To_Ecodan_OK;
+
+  for (int i = 1; i < 16; i++) {
+    Array0x6B[i] = Buffer[i];
+  }
+}
+
+
 void ECODANDECODER::CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize) {
   CreateBlankMessageTemplate(&TxMessage, PacketType, PayloadSize);
 }
@@ -191,6 +268,41 @@ void ECODANDECODER::SetPayloadByte(uint8_t Data, uint8_t Location) {
 
 uint8_t ECODANDECODER::PrepareTxCommand(uint8_t *Buffer) {
   return PrepareCommand(&TxMessage, Buffer);
+}
+
+
+void ECODANDECODER::EncodeMELCloud(uint8_t cmd) {
+  TxMessage.Payload[0] = cmd;
+  for (int i = 1; i < 16; i++) {
+    if (cmd == INIT_REQUEST) {
+      TxMessage.Payload[i] = Array0x4C[i];
+    } else if (cmd == GET_REQUEST) {
+      TxMessage.Payload[i] = Array0x48[i];
+    } else if (cmd == SET_TEMP) {
+      TxMessage.Payload[i] = Array0x49[i];
+    } else if (cmd == SET_DHW) {
+      TxMessage.Payload[i] = Array0x4A[i];
+    } else if (cmd == SET_HOL) {
+      TxMessage.Payload[i] = Array0x4B[i];
+    }
+  }
+}
+
+
+void ECODANDECODER::TransfertoBuffer(uint8_t msgtype, uint8_t bufferposition) {
+  BufferArray[bufferposition][0] = msgtype;
+  for (int i = 1; i < 17; i++) {
+    BufferArray[bufferposition][i] = TxMessage.Payload[i - 1];
+  }
+}
+uint8_t ECODANDECODER::ReturnNextCommandType(uint8_t bufferposition) {
+  return BufferArray[bufferposition][0];
+}
+
+void ECODANDECODER::EncodeNextCommand(uint8_t bufferposition) {
+  for (int i = 1; i < 17; i++) {
+    TxMessage.Payload[i - 1] = BufferArray[bufferposition][i];
+  }
 }
 
 uint8_t ECODANDECODER::PrepareCommand(MessageStruct *Message, uint8_t *Buffer) {

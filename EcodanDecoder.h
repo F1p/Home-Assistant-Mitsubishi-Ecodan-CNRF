@@ -19,18 +19,22 @@
 #define ECODANDECODER_h
 
 #include <stdint.h>
-#include <time.h>
 #include <string.h>
+#include "proxy.h"
 
 #define PACKET_SYNC 0xFC
-#define GET_REQUEST 0x48
-#define GET_INIT 0x32
-#define GET_RESPONSE 0x68
-#define GET_ABOUT_RESPONSE 0x7B
-#define CONNECT_REQUEST 0x5A
-#define CONNECT_RESPONSE 0x7A
 #define INIT_REQUEST 0x4C
 #define INIT_RESPONSE 0x6C
+#define GET_REQUEST 0x48
+#define GET_RESPONSE 0x68
+#define SET_TEMP 0x49
+#define SET_TEMP_RESPONSE 0x69
+#define SET_DHW 0x4A
+#define SET_DHW_RESPONSE 0x6A
+#define SET_HOL 0x4B
+#define SET_HOL_RESPONSE 0x6B
+#define CONNECT_REQUEST 0x5A
+#define CONNECT_RESPONSE 0x7A
 
 
 #define COMMANDSIZE 22  // 5 Byte Header + 16 Byte Payload  + 1 Byte Checksum
@@ -70,7 +74,7 @@ const char HolidayModetString[2][4] = { "Off", "On" };
 #define ITEM_ON 1
 const char OFF_ON_String[2][4] = { "Off", "On" };
 
-const char TimerModeString[7][34] = {"None", "TBC", "TBC", "TBC", "Timer Mode Heating", "Prohibit DHW, Timer Mode Heating", "Prohibit Heating"};
+const char TimerModeString[7][34] = { "None", "TBC", "TBC", "TBC", "Timer Mode Heating", "Prohibit DHW, Timer Mode Heating", "Prohibit Heating" };
 
 
 typedef struct _MessgeStruct {
@@ -85,6 +89,9 @@ typedef struct _MessgeStruct {
 typedef struct _EcodanStatus {
   uint8_t Power, SystemOpMode, Zone1ControlMode, Zone2ControlMode, TimerProhibit, Zone1ActiveInput, Zone2ActiveInput, ErrorCode, DHWForce, Holiday, ErrorCodeNum;
   float SetpointZ1, SetpointZ2;
+  // From Message 0x61
+  bool Write_To_Ecodan_OK;
+
 } EcodanStatus;
 
 
@@ -96,6 +103,11 @@ public:
   void CreateBlankTxMessage(uint8_t PacketType, uint8_t PayloadSize);
   void SetPayloadByte(uint8_t Data, uint8_t Location);
   uint8_t PrepareTxCommand(uint8_t *Buffer);
+  void EncodeMELCloud(uint8_t cmd);
+  void TransfertoBuffer(uint8_t msgtype, uint8_t bufferposition);
+  uint8_t ReturnNextCommandType(uint8_t bufferposition);
+  void EncodeNextCommand(uint8_t bufferposition);
+
   EcodanStatus Status;
 protected:
 
@@ -115,8 +127,11 @@ private:
 
   uint8_t CheckSum(uint8_t *Buffer, uint8_t len);
 
+  void Process0x6A(uint8_t *Payload, EcodanStatus *Status);
+  void Process0x6B(uint8_t *Payload, EcodanStatus *Status);
   void Process0x6C(uint8_t *Payload, EcodanStatus *Status);
   void Process0x68(uint8_t *Payload, EcodanStatus *Status);
+  void Process0x69(uint8_t *Payload, EcodanStatus *Status);
 
   void WriteOK(uint8_t *Payload, EcodanStatus *Status);
 };

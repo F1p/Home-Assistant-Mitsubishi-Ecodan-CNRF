@@ -26,10 +26,10 @@ int ControllerQTY;
 // Initialisation Commands
 uint8_t Init3[] = { 0xfc, 0x5a, 0x04, 0x03, 0x02, 0xca, 0x01, 0xd2 };  // CNRF Connect
 
-
 unsigned long lastmsgdispatchedMillis = 0;  // variable for comparing millis counter
 int cmd_queue_length = 0;
 int cmd_queue_position = 1;
+int CurrentWriteAttempt = 0;
 bool WriteInProgress = false;
 
 ECODAN::ECODAN(void)
@@ -39,6 +39,7 @@ ECODAN::ECODAN(void)
   UpdateFlag = 0;
   ProcessFlag = false;
   Connected = false;
+  PauseStateMachine = false;
   msbetweenmsg = 0;
 }
 
@@ -48,7 +49,7 @@ void ECODAN::Process(void) {
 
   while (DeviceStream->available()) {
     if (!ProcessFlag) {
-      DEBUG_PRINT("[CNRF > Bridge] ");
+      DEBUG_PRINT("[FTC > Bridge] ");
       ProcessFlag = true;
     }
     c = DeviceStream->read();
@@ -78,6 +79,42 @@ void ECODAN::SetStream(Stream *HeatPumpStream) {
 }
 
 
+void ECODAN::WriteStateMachine(void) {
+  uint8_t Buffer[COMMANDSIZE];
+  uint8_t CommandSize;
+  uint8_t i;
+
+  if (cmd_queue_length > 0 && cmd_queue_length < 11 && Connected) {
+    CurrentWriteAttempt++;
+    StopStateMachine();
+    DEBUG_PRINT(F("Writing msg at position: "));
+    DEBUG_PRINT(cmd_queue_position);
+    DEBUG_PRINT(F(", attempt: "));
+    DEBUG_PRINTLN(CurrentWriteAttempt);
+
+    DEBUG_PRINT(F("[Bridge > FTC] "));
+    ECODANDECODER::CreateBlankTxMessage(ECODANDECODER::ReturnNextCommandType(cmd_queue_position), 0x10);
+    ECODANDECODER::EncodeNextCommand(cmd_queue_position);
+    CommandSize = ECODANDECODER::PrepareTxCommand(Buffer);
+    DeviceStream->write(Buffer, CommandSize);
+    lastmsgdispatchedMillis = millis();
+    DeviceStream->flush();
+
+    for (i = 0; i < CommandSize; i++) {
+      if (Buffer[i] < 0x10) DEBUG_PRINT(F("0"));
+      DEBUG_PRINT(String(Buffer[i], HEX));
+      DEBUG_PRINT(F(", "));
+      Buffer[i] = 0x00;
+    }
+    DEBUG_PRINTLN();
+
+    WriteInProgress = true;
+  } else {
+    PauseStateMachine = false;
+  }
+}
+
+
 void ECODAN::TriggerStatusStateMachine(void) {
   if (!Connected) {
     Connect();
@@ -88,6 +125,13 @@ void ECODAN::TriggerStatusStateMachine(void) {
   Connected = false;
 }
 
+
+void ECODAN::StopStateMachine(void) {
+  if (CurrentMessage != 0) {
+    DEBUG_PRINTLN(F("Pausing Heat Pump Read Operation to FTC"));
+    PauseStateMachine = true;
+  }
+}
 
 
 void ECODAN::StatusStateMachine(void) {
@@ -175,8 +219,10 @@ void ECODAN::ConfigConnect(void) {
 
   DEBUG_PRINTLN("Sending Config Request to Heat Pump...");
   // Config Builder
-  ECODANDECODER::CreateBlankTxMessage(GET_INIT, 0x10);
+  DEBUG_PRINT("[Bridge > FTC] ");
+  ECODANDECODER::CreateBlankTxMessage(INIT_REQUEST, 0x10);
 
+  ECODANDECODER::SetPayloadByte(0x32, 0);
   // Controller Quantity Bitmask
   switch (ControllerQTY) {
     case (1):
@@ -228,6 +274,16 @@ uint8_t ECODAN::HeatPumpConnected(void) {
   return Connected;
 }
 
+
+void ECODAN::WriteMELCloudCMD(uint8_t cmd) {
+  ECODANDECODER::EncodeMELCloud(cmd);
+  if (cmd_queue_length < 10) {
+    cmd_queue_length++;
+    ECODANDECODER::TransfertoBuffer(cmd, cmd_queue_length);
+    printTransferMsg(cmd_queue_length);
+  }
+}
+
 uint8_t ECODAN::UpdateComplete(void) {
   if (UpdateFlag) {
     UpdateFlag = 0;
@@ -239,4 +295,9 @@ uint8_t ECODAN::UpdateComplete(void) {
 
 uint8_t ECODAN::Lastmsbetweenmsg(void) {
   return msbetweenmsg;
+}
+
+void ECODAN::printTransferMsg(int length) {
+  DEBUG_PRINT(F("Transferred msg to position: "));
+  DEBUG_PRINTLN(length);
 }

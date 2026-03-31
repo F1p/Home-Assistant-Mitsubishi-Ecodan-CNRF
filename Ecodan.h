@@ -35,8 +35,10 @@ public:
   uint8_t HeatPumpConnected(void);
   uint8_t Lastmsbetweenmsg(void);
   void WritetoCNRF(uint8_t byte);
+  void WriteMELCloudCMD(uint8_t cmd);
 
   void SetZoneCurrentTemperature(float Setpoint, uint8_t Mode, uint8_t Zone);
+  bool PauseStateMachine;
 
 protected:
 
@@ -54,6 +56,7 @@ private:
   Stream *DeviceStream;
   void Connect(void);
   void ConfigConnect(void);
+  void printTransferMsg(int length);
 };
 
 #endif
