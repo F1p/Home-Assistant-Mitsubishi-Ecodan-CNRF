@@ -8,11 +8,11 @@ This project uses the same hardware as for the CN105, the software is also compl
 
 # Hardware
 
+Pre-Compiled software is for offical hardware:
+ - Generation 2 ESP32 ebay sold hardware (WiFi Gen2 Only is suitable): [https://www.ebay.co.uk/itm/326347231581](https://www.ebay.co.uk/itm/326373657740?var=515493740624)
+
 To learn about the Hardware and Device Recovery, please read [Hardware and Recovery.md](https://github.com/F1p/Mitsubishi-CN105-Protocol-Decode/blob/master/documentation/Hardware%20and%20Recovery.md)
 
-Pre-Compiled software is for offical hardware:
-
- - Generation 2 ESP32 ebay sold hardware: https://www.ebay.co.uk/itm/326347231581
 
 You can bring your own, compile in Arduino or flash the hardware above with pre-compiled.
 
