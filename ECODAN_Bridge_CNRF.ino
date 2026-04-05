@@ -55,7 +55,7 @@
 
 extern float RCTemp[8];
 extern int ControllerQTY;
-String FirmwareVersion = "2.0.0-Beta10";
+String FirmwareVersion = "2.0.0-Beta11";
 
 
 #ifdef ESP8266  // Define the Witty ESP8266 Serial Pins
@@ -83,8 +83,8 @@ int Red_RGB_LED = 15;
 #include <LiteLED.h>
 #define LED_TYPE LED_STRIP_WS2812
 #define LED_TYPE_IS_RGBW 0
-#define LED_GPIO 42
-//#define LED_GPIO 35
+//#define LED_GPIO 42
+#define LED_GPIO 35
 #define LED_BRIGHT 100
 static const crgb_t L_RED = 0xff0000;
 static const crgb_t L_GREEN = 0x00ff00;
@@ -337,7 +337,7 @@ void setup() {
   initializeWifiManager();
   RecalculateMQTTTopics();
 
-  shouldSaveConfig = true;  // Update the config in File System
+  //shouldSaveConfig = true;  // Update the config in File System
   if (shouldSaveConfig) {
     saveConfig();
   }
@@ -734,23 +734,27 @@ bool getHeatmiserTemperature(const char* host, uint16_t port) {
 
         bool matched = false;  // Reset flag for each device in the array
 
-        if (strcmp(zoneName, mqttSettings.z1_name) == 0) {
-          RCInput[0] = temp;
-          RCTemp[0] = roundToNearestHalf(temp);
-          DEBUG_PRINT("Zone 1 Match: ");
-          DEBUG_PRINT(zoneName);
-          DEBUG_PRINT(" at: ");
-          DEBUG_PRINTLN(temp);
-          matched = true;
+        if (zoneName != nullptr && mqttSettings.z1_name[0] != '\0') {
+          if (strcmp(zoneName, mqttSettings.z1_name) == 0) {
+            RCInput[0] = temp;
+            RCTemp[0] = roundToNearestHalf(temp);
+            DEBUG_PRINT("Zone 1 Match: ");
+            DEBUG_PRINT(zoneName);
+            DEBUG_PRINT(" at: ");
+            DEBUG_PRINTLN(temp);
+            matched = true;
+          }
         }
-        if (strcmp(zoneName, mqttSettings.z2_name) == 0) {
-          RCInput[1] = temp;
-          RCTemp[1] = roundToNearestHalf(temp);
-          DEBUG_PRINT("Zone 2 Match: ");
-          DEBUG_PRINT(zoneName);
-          DEBUG_PRINT(" at: ");
-          DEBUG_PRINTLN(temp);
-          matched = true;
+        if (zoneName != nullptr && mqttSettings.z2_name[0] != '\0') {
+          if (strcmp(zoneName, mqttSettings.z2_name) == 0) {
+            RCInput[1] = temp;
+            RCTemp[1] = roundToNearestHalf(temp);
+            DEBUG_PRINT("Zone 2 Match: ");
+            DEBUG_PRINT(zoneName);
+            DEBUG_PRINT(" at: ");
+            DEBUG_PRINTLN(temp);
+            matched = true;
+          }
         }
         if (!matched) {
           DEBUG_PRINT("Skipping Zone: ");

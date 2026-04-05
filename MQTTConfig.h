@@ -166,65 +166,60 @@ void readSettingsFromConfig() {
     MQTTCommandControllerRC = MQTT_COMMAND_RC;
   }
 
-
   void saveConfig() {
-    // Read MQTT Portal Values for save to file system
     DEBUG_PRINTLN(F("Copying Portal Values..."));
-    strcpy(mqttSettings.deviceId, custom_device_id.getValue());
-    strcpy(mqttSettings.heatmiser, custom_hm_server.getValue());
-    strcpy(mqttSettings.z1_name, custom_hm_z1.getValue());
-    strcpy(mqttSettings.z2_name, custom_hm_z2.getValue());
-    strcpy(mqttSettings.hostname, custom_mqtt_server.getValue());
-    strcpy(mqttSettings.port, custom_mqtt_port.getValue());
-    strcpy(mqttSettings.user, custom_mqtt_user.getValue());
-    strcpy(mqttSettings.password, custom_mqtt_pass.getValue());
-    strcpy(mqttSettings.baseTopic, custom_mqtt_basetopic.getValue());
+
+    // Use strlcpy (Safe copy) to prevent overflows
+    // This ensures we never write more than the destination can hold
+    strlcpy(mqttSettings.deviceId, custom_device_id.getValue(), sizeof(mqttSettings.deviceId));
+    strlcpy(mqttSettings.heatmiser, custom_hm_server.getValue(), sizeof(mqttSettings.heatmiser));
+    strlcpy(mqttSettings.z1_name, custom_hm_z1.getValue(), sizeof(mqttSettings.z1_name));
+    strlcpy(mqttSettings.z2_name, custom_hm_z2.getValue(), sizeof(mqttSettings.z2_name));
+    strlcpy(mqttSettings.hostname, custom_mqtt_server.getValue(), sizeof(mqttSettings.hostname));
+    strlcpy(mqttSettings.port, custom_mqtt_port.getValue(), sizeof(mqttSettings.port));
+    strlcpy(mqttSettings.user, custom_mqtt_user.getValue(), sizeof(mqttSettings.user));
+    strlcpy(mqttSettings.password, custom_mqtt_pass.getValue(), sizeof(mqttSettings.password));
+    strlcpy(mqttSettings.baseTopic, custom_mqtt_basetopic.getValue(), sizeof(mqttSettings.baseTopic));
 
     DEBUG_PRINT(F("Saving config... "));
     File configFile = LittleFS.open("/config.json", "w");
     if (!configFile) {
-      DEBUG_PRINTLN(F("[FAILED] Unable to open config file for writing"));
+      DEBUG_PRINTLN(F("[FAILED]"));
       return;
-    } else {
-      JsonDocument doc;
-      doc[mqttSettings.wm_device_id_identifier] = mqttSettings.deviceId;
-      doc[mqttSettings.wm_hm_hostname_identifier] = mqttSettings.heatmiser;
-      doc[mqttSettings.wm_hm_z1_identifier] = mqttSettings.z1_name;
-      doc[mqttSettings.wm_hm_z2_identifier] = mqttSettings.z2_name;
-      doc[mqttSettings.wm_mqtt_hostname_identifier] = mqttSettings.hostname;
-      doc[mqttSettings.wm_mqtt_port_identifier] = mqttSettings.port;
-      doc[mqttSettings.wm_mqtt_user_identifier] = mqttSettings.user;
-      doc[mqttSettings.wm_mqtt_password_identifier] = mqttSettings.password;
-      doc[mqttSettings.wm_mqtt_basetopic_identifier] = mqttSettings.baseTopic;
+    }
 
-      if (serializeJson(doc, configFile) == 0) {
-        DEBUG_PRINTLN("[FAILED]");
-      } else {
-        DEBUG_PRINTLN("[DONE]");
-        serializeJson(doc, DEBUGPORT);
-        DEBUG_PRINTLN();
-#ifndef ARDUINO_WT32_ETH01
-        if (WiFi.status() == WL_CONNECTED) {
-          DEBUG_PRINTLN(F("Restarting Web Server..."));  // Restart the web server now it's on WiFi
-          wifiManager.stopWebPortal();
-          wifiManager.startWebPortal();
-          MDNS.end();
-          MDNS.begin("heatpump-cnrf");
-          MDNS.addService("http", "tcp", 80);
-        }
-#endif
-      }
+    JsonDocument doc;
+    // Map settings to JSON
+    doc[mqttSettings.wm_device_id_identifier] = mqttSettings.deviceId;
+    doc[mqttSettings.wm_hm_hostname_identifier] = mqttSettings.heatmiser;
+    doc[mqttSettings.wm_hm_z1_identifier] = mqttSettings.z1_name;
+    doc[mqttSettings.wm_hm_z2_identifier] = mqttSettings.z2_name;
+    doc[mqttSettings.wm_mqtt_hostname_identifier] = mqttSettings.hostname;
+    doc[mqttSettings.wm_mqtt_port_identifier] = mqttSettings.port;
+    doc[mqttSettings.wm_mqtt_user_identifier] = mqttSettings.user;
+    doc[mqttSettings.wm_mqtt_password_identifier] = mqttSettings.password;
+    doc[mqttSettings.wm_mqtt_basetopic_identifier] = mqttSettings.baseTopic;
+
+    if (serializeJson(doc, configFile) == 0) {
+      DEBUG_PRINTLN("[FAILED]");
+    } else {
+      DEBUG_PRINTLN("[DONE]");
     }
     configFile.close();
+
+    // CRITICAL: Don't stop/start the portal inside the save function.
+    // Set a flag and do it in the main loop, or better yet, just restart the ESP.
     shouldSaveConfig = false;
+
+    DEBUG_PRINTLN(F("Config Saved. Rebooting to apply changes..."));
+    delay(1000);
+    ESP.restart();
   }
 
   // Callback notifying us of the need to save config
   void saveConfigCallback() {
     saveConfig();
   }
-
-
 
   // Handle Webhook Callbacks
   void handleRoute() {
