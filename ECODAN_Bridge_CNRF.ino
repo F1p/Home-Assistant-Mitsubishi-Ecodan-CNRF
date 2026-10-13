@@ -244,7 +244,7 @@ WiFiManagerParameter custom_device_id("device_id", "<hr><br>Device ID", "TEMP", 
 
 WiFiManager wifiManager;
 
-float RCInput[7];
+float RCInput[8];
 
 #include "TimerCallBack.h"
 #include "Debug.h"
