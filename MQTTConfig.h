@@ -223,44 +223,16 @@ void readSettingsFromConfig() {
 
   // Handle Webhook Callbacks
   void handleRoute() {
-    if (wifiManager.server->hasArg("rc1")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc1");
-      RCInput[0] = input.toFloat();
-      wifiManager.server->send(200, "text/plain", "success");
+    bool updated = false;
+    for (int i = 0; i < 8; i++) {  // rc1 - rc8
+      String arg = String("rc") + String(i + 1);
+      if (wifiManager.server->hasArg(arg)) {
+        RCInput[i] = wifiManager.server->arg(arg).toFloat();
+        RCTemp[i] = roundToNearestHalf(RCInput[i]);
+        updated = true;
+      }
     }
-    if (wifiManager.server->hasArg("rc2")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc2");
-      RCInput[1] = input.toFloat();
-      wifiManager.server->send(200, "text/plain", "success");
-    }
-    if (wifiManager.server->hasArg("rc3")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc3");
-      RCInput[2] = input.toFloat();
-      wifiManager.server->send(200, "text/plain", "success");
-    }
-    if (wifiManager.server->hasArg("rc4")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc4");
-      RCInput[3] = input.toFloat();
-      wifiManager.server->send(200, "text/plain", "success");
-    }
-    if (wifiManager.server->hasArg("rc5")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc5");
-      RCInput[4] = input.toFloat();
-      wifiManager.server->send(200, "text/plain", "success");
-    }
-    if (wifiManager.server->hasArg("rc6")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc6");
-      RCInput[5] = input.toFloat();
-      wifiManager.server->send(200, "text/plain", "success");
-    }
-    if (wifiManager.server->hasArg("rc7")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc7");
-      RCInput[6] = input.toFloat();
-      wifiManager.server->send(200, "text/plain", "success");
-    }
-    if (wifiManager.server->hasArg("rc8")) {  // Pull Argument room1
-      String input = wifiManager.server->arg("rc8");
-      RCInput[7] = input.toFloat();
+    if (updated) {
       wifiManager.server->send(200, "text/plain", "success");
     } else {
       wifiManager.server->send(400, "text/plain", "failed");
