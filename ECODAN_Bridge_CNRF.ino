@@ -55,7 +55,7 @@
 
 extern float RCTemp[8];
 extern int ControllerQTY;
-String FirmwareVersion = "2.0.0-Beta11";
+String FirmwareVersion = "2.0.1";
 
 
 #ifdef ESP8266  // Define the Witty ESP8266 Serial Pins
