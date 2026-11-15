@@ -55,7 +55,7 @@
 
 extern float RCTemp[8];
 extern int ControllerQTY;
-String FirmwareVersion = "2.0.1";
+String FirmwareVersion = "2.0.1";  // NOTE: the hourly OTA check installs whatever "target" update.json names if it differs from this string. Bump both together.
 
 
 #ifdef ESP8266  // Define the Witty ESP8266 Serial Pins
@@ -252,19 +252,66 @@ float roundToNearestHalf(float value);
 #include "MQTTDiscovery.h"
 #include "MQTTConfig.h"
 
+
+// ==========================================
+// MQTT RECONNECT BACKOFF
+// ==========================================
+// MQTTReconnect() (MQTTConfig.h) is a blocking connect: with the broker down it holds the whole loop (and so the
+// FTC communication) for the length of the TCP/CONNACK timeout. It used to be called from every 2s keep-alive tick.
+// MQTTReconnectBackoff() lets it run at most once per MQTT_RETRY_INTERVAL_MS, measured from the END of the previous
+// attempt, so the loop always gets a full interval to run between attempts. The first attempt after a drop is immediate.
+const unsigned long MQTT_RETRY_INTERVAL_MS = 30000;
+unsigned long MQTTLastAttemptMs = 0;
+bool MQTTAttempted = false;
+
+uint8_t MQTTReconnectBackoff(void) {
+  if (MQTTClient1.connected()) {
+    MQTTAttempted = false;  // Healthy: the next drop retries straight away
+    return 1;
+  }
+  if (MQTTAttempted && (millis() - MQTTLastAttemptMs < MQTT_RETRY_INTERVAL_MS)) { return 0; }  // Still backing off, do not block
+  MQTTAttempted = true;
+  uint8_t ok = MQTTReconnect();
+  MQTTLastAttemptMs = millis();
+  return ok;
+}
+
+// Replaces handleMQTTState() (MQTTConfig.h) as the 30s timer callback so the timer cannot bypass the backoff
+void MQTTMaintain(void) {
+  if (!MQTTClient1.connected()) {
+#ifdef ARDUINO_M5STACK_ATOMS3                 // Define the M5Stack LED
+    if (!wifiManager.getConfigPortalActive()) {  // Not got config portal open, change to orange:
+      myLED.setPixel(0, L_ORANGE, 1);
+    }
+#endif
+#ifdef ESP8266                           // Define the Witty ESP8266 Ports
+    analogWrite(Green_RGB_LED, 30);      // Green LED on, 25% brightness
+    digitalWrite(Red_RGB_LED, HIGH);     // Add the Red LED to the Green LED = Orange
+#endif
+    MQTTReconnectBackoff();
+  }
+}
+
+
 void HeatPumpQueryStateEngine(void);
 void HeatPumpKeepAlive(void);
 void Report(void);
 void StatusReport(void);
 void PublishAllReports(void);
 void RequestHeatmiserData(void);
+// Heatmiser hub backoff: while the hub is unreachable the 60 s timer would otherwise block the loop (up to ~3 s connect + 3 s data wait) every minute.
+const unsigned long HM_BASE_INTERVAL_MS = 60000;   // Normal poll interval (matches the timer)
+const unsigned long HM_MAX_BACKOFF_MS = 600000;    // Cap: retry at most every 10 minutes while offline
+uint8_t HMFailCount = 0;
+unsigned long HMNextTryMs = 0;
+bool HMBackoffActive = false;
 void HeatPumpWriteStateEngine(void);
 void CheckForOTAUpdates(void);
 
 
 TimerCallBack HeatPumpQuery1(1000, HeatPumpQueryStateEngine);  // Set to 400ms (Safe), 320-350ms best time between messages
 TimerCallBack HeatPumpQuery2(2000, HeatPumpKeepAlive);         // Set to 20-30s for heat pump query frequency
-TimerCallBack HeatPumpQuery3(30000, handleMQTTState);          // Re-connect attempt timer if MQTT is not online
+TimerCallBack HeatPumpQuery3(30000, MQTTMaintain);             // Re-connect attempt timer if MQTT is not online (goes through the backoff)
 TimerCallBack HeatPumpQuery4(30000, PublishAllReports);        // Set to 20-30s for heat pump query frequency
 TimerCallBack HeatPumpQuery5(60000, RequestHeatmiserData);     // Query Heatmiser
 TimerCallBack HeatPumpQuery6(1000, HeatPumpWriteStateEngine);  // Set to 500ms (Safe), 320-350ms best time between messages
@@ -275,6 +322,7 @@ unsigned long looppreviousMicros = 0;    // variable for comparing millis counte
 unsigned long ftcpreviousMillis = 0;     // variable for comparing millis counter
 unsigned long wifipreviousMillis = 0;    // variable for comparing millis counter
 unsigned long postwrpreviousMillis = 0;  // variable for comparing millis counter
+unsigned long PortalRetryMillis = 0;     // Last STA retry while the config portal is open
 int FTCLoopSpeed, CPULoopSpeed;          // variable for holding loop time in ms
 bool WiFiOneShot = true;
 bool FTCOneShot = true;
@@ -284,8 +332,11 @@ bool CableConnected = true;
 bool WiFiConnectedLastLoop = false;
 bool PostWriteTrigger = false;
 int connectionFailures = 0;
-unsigned long lastRequestTime = 0;
-const unsigned long requestInterval = 60000;
+
+// The FTC reply is checked every 2s. One missed window (a lost frame or checksum error) is normal, so only swap the
+// cable/proxy pins (AtomS3) after this many consecutive misses, instead of swapping on the first one.
+const uint8_t FTC_MISSES_BEFORE_SWAP = 5;
+uint8_t FTCMissCount = 0;
 
 extern int cmd_queue_length;
 extern int cmd_queue_position;
@@ -294,6 +345,40 @@ extern int CurrentWriteAttempt;
 
 #ifdef ARDUINO_WT32_ETH01
 static bool eth_connected = false;
+#endif
+
+// True when the network link is up (WiFi.status() is never connected on the Ethernet build)
+bool NetworkUp(void) {
+#ifdef ARDUINO_WT32_ETH01
+  return eth_connected;
+#else
+  return WiFi.status() == WL_CONNECTED;
+#endif
+}
+
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
+#define ROAM_CHECK_INTERVAL 300000UL  // Check every 5 min
+#define ROAM_FIRST_CHECK 20000UL      // First check 20 s after each (re)connection
+#define ROAM_WEAK_RSSI -70            // Above this the signal is fine, no scan
+#define ROAM_MIN_GAIN 8               // Minimum gain (dB) before changing access point
+#define ROAM_UNLOCK_AFTER 30000UL     // Chosen access point unreachable for 30 s: accept any access point
+unsigned long RoamLastCheck = 0;
+bool RoamScanRunning = false;
+bool RoamBssidLocked = false;
+unsigned long RoamCount = 0;  // Number of WiFi reconnection attempts launched by the roam code (AP change + unlock)
+String RoamSSID = "";
+String RoamPSK = "";
+void WiFiRoamHandler(bool JustConnected);
+void WiFiRoamUnlock(unsigned long DisconnectedFor);
+#endif
+
+#ifndef ARDUINO_WT32_ETH01
+// Reset button read with a 50ms debounce, so a noise spike on the pin cannot start the (blocking) reset sequence
+bool ResetButtonPressed(void) {
+  if (digitalRead(Reset_Button) != LOW) { return false; }  // Inverted (Button Pushed is LOW)
+  delay(50);
+  return (digitalRead(Reset_Button) == LOW);
+}
 #endif
 
 
@@ -347,6 +432,7 @@ void setup() {
   startTelnet();
 
   MQTTClient1.setBufferSize(2048);  // Increase MQTT Buffer Size
+  MQTTClient1.setSocketTimeout(3);  // Bound the CONNACK wait to 3s (library default 15s). Needs PubSubClient 2.8+
   initializeMQTTClient1();
   MQTTClient1.setCallback(MQTTonData);
   wifiManager.startWebPortal();
@@ -420,8 +506,8 @@ void loop() {
       CurrentWriteAttempt = 0;
       PostWriteTrigger = true;  // Allows a number of seconds to pass, then restarts read operation
       postwrpreviousMillis = millis();
-    }                                              // Dequeue the last message that was written
-    if (MQTTReconnect()) { PublishAllReports(); }  // Publish update to the MQTT Topics
+    }                                                      // Dequeue the last message that was written
+    if (MQTTReconnectBackoff()) { PublishAllReports(); }  // Publish update to the MQTT Topics
   } else if ((WriteInProgress) && (CurrentWriteAttempt > 10)) {
     if (cmd_queue_length > cmd_queue_position) {
       cmd_queue_position++;  // Skip this write + Increment the position
@@ -482,6 +568,9 @@ void loop() {
       ESP.restart();
 #endif
     }  // Wait for 5 mins to try reconnects then force restart
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
+    WiFiRoamUnlock(millis() - wifipreviousMillis);  // Release the chosen access point if it has disappeared
+#endif
     WiFiConnectedLastLoop = false;
   } else if (WiFi.status() != WL_CONNECTED && wifiManager.getConfigPortalActive()) {
 #ifdef ESP8266                         // Define the Witty ESP8266 Ports
@@ -491,6 +580,14 @@ void loop() {
 #endif
 #ifdef ARDUINO_M5STACK_ATOMS3  // Define the M5Stack LED
     myLED.setPixel(0, L_BLUE, 1);
+#endif
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
+    // Saved WiFi and nobody on the portal AP: retry the saved network (any AP) every 60 s
+    if (wifiManager.getWiFiIsSaved() && WiFi.softAPgetStationNum() == 0 && millis() - PortalRetryMillis >= 60000UL) {
+      PortalRetryMillis = millis();
+      DEBUG_PRINTLN(F("Config portal active, retrying saved WiFi"));
+      WiFi.begin();
+    }
 #endif
     WiFiConnectedLastLoop = false;
   } else {                              // WiFi is connected
@@ -504,18 +601,24 @@ void loop() {
       myLED.setPixel(0, L_GREEN, 1);
 #endif
     }
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
+    WiFiRoamHandler(!WiFiConnectedLastLoop);    // Connect to a stronger mesh AP
+    if (wifiManager.getConfigPortalActive()) {  // Connected while the boot config portal is still open
+      DEBUG_PRINTLN(F("WiFi connected, closing config portal"));
+      wifiManager.stopConfigPortal();  // Closes the portal AP, but also stops the web server
+    }
+    if (!wifiManager.getConfigPortalActive() && !wifiManager.getWebPortalActive()) {  // Web server stopped (portal closed or timed out): restart it
+      DEBUG_PRINTLN(F("Starting Web Portal"));
+      wifiManager.startWebPortal();
+    }
+#endif
     WiFiOneShot = true;
     WiFiConnectedLastLoop = true;
   }
 
-  if (millis() - lastRequestTime >= requestInterval) {
-    lastRequestTime = millis();
-    RequestHeatmiserData();
-  }
-
   // -- Push Button Action Handler -- //
 #ifndef ARDUINO_WT32_ETH01
-  if (digitalRead(Reset_Button) == LOW) {  // Inverted (Button Pushed is LOW)
+  if (ResetButtonPressed()) {  // Debounced (Button Pushed is LOW)
 #ifdef ESP8266                             // Define the Witty ESP8266 Ports
     digitalWrite(Red_RGB_LED, HIGH);       // Flash the Red LED
     delay(500);
@@ -571,24 +674,30 @@ void loop() {
 void HeatPumpKeepAlive(void) {
   if (!HeatPump.HeatPumpConnected()) {
     DEBUG_PRINTLN("Heat Pump Disconnected");
+    if (FTCMissCount < 255) { FTCMissCount++; }
 #ifdef ARDUINO_M5STACK_ATOMS3
-    // Swap to the other pins and test the connection
-    if (CableConnected) {
-      DEBUG_PRINTLN("Trying to connect via Proxy Circuit Board");
-      HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, FTCProxy_RxPin, FTCProxy_TxPin);  // Rx, Tx
-      HeatPump.SetStream(&HEATPUMP_STREAM);
-      CableConnected = false;
-    } else {
-      DEBUG_PRINTLN("Trying to connect via Cable");
-      HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, FTCCable_RxPin, FTCCable_TxPin);  // Rx, Tx
-      HeatPump.SetStream(&HEATPUMP_STREAM);
-      CableConnected = true;
+    // Swap to the other pins and test the connection, but only after several consecutive missed replies
+    if (FTCMissCount >= FTC_MISSES_BEFORE_SWAP) {
+      FTCMissCount = 0;
+      if (CableConnected) {
+        DEBUG_PRINTLN("Trying to connect via Proxy Circuit Board");
+        HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, FTCProxy_RxPin, FTCProxy_TxPin);  // Rx, Tx
+        HeatPump.SetStream(&HEATPUMP_STREAM);
+        CableConnected = false;
+      } else {
+        DEBUG_PRINTLN("Trying to connect via Cable");
+        HEATPUMP_STREAM.begin(SERIAL_BAUD, SERIAL_CONFIG, FTCCable_RxPin, FTCCable_TxPin);  // Rx, Tx
+        HeatPump.SetStream(&HEATPUMP_STREAM);
+        CableConnected = true;
+      }
     }
 #endif
+  } else {
+    FTCMissCount = 0;
   }
   ftcpreviousMillis = millis();
   HeatPump.TriggerStatusStateMachine();
-  if (MQTTReconnect()) { StatusReport(); }
+  if (MQTTReconnectBackoff()) { StatusReport(); }
 }
 
 void HeatPumpQueryStateEngine(void) {
@@ -639,8 +748,13 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
 
   // QTY in use
   if (Topic == MQTTCommandControllerQTY) {
-    unitSettings.Quantity = Payload.toInt();
-    shouldSaveConfig = true;  // Write the data to JSON file so if device reboots it is saved
+    int qty = Payload.toInt();
+    if (qty >= 1 && qty <= 8) {  // The FTC bitmask only covers 1-8 controllers; 0 / out of range would send no controllers at all
+      unitSettings.Quantity = qty;
+      shouldSaveConfig = true;  // Write the data to JSON file so if device reboots it is saved
+    } else {
+      DEBUG_PRINTLN("QTY rejected: must be 1 to 8");
+    }
   }
 
   // RCs 1-8
@@ -663,10 +777,19 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
       }
       // RC
       if (type == "rc") {
-        int action = doc["action"];
-        float value = doc["value"];
-        RCInput[action - 1] = value;
-        RCTemp[action - 1] = roundToNearestHalf(value);
+        if (doc["action"].is<int>() && doc["value"].is<float>()) {
+          int action = doc["action"];
+          float value = doc["value"];
+          // action indexes RCInput[]/RCTemp[] (8 entries) and value is sent as one byte ((value * 2) + 128), so it must stay below 64C
+          if (action >= 1 && action <= 8 && value >= 0 && value <= 63.5) {
+            RCInput[action - 1] = value;
+            RCTemp[action - 1] = roundToNearestHalf(value);
+          } else {
+            DEBUG_PRINTLN("RC input rejected: action must be 1-8 and value 0-63.5");
+          }
+        } else {
+          DEBUG_PRINTLN("RC input rejected: missing or non-numeric action/value");
+        }
       }
       // DHW
       if (type == "dhw") {}
@@ -678,16 +801,24 @@ void MQTTonData(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-bool getHeatmiserTemperature(const char* host, uint16_t port) {
+// Returns: 0 = could not connect, 1 = connected but no usable data, 2 = data received and parsed
+uint8_t getHeatmiserTemperature(const char* host, uint16_t port) {
+  uint8_t result = 1;
   WiFiClient client;  // Use a local instance instead of the Class name
-  client.setTimeout(10000);
+  // WiFiClient::setTimeout() takes SECONDS on ESP32 but MILLISECONDS on ESP8266. The old setTimeout(10000) was therefore
+  // about 2.7 hours of connect timeout on ESP32, bounded only by the TCP stack, with the whole loop (and FTC traffic) held.
+#ifdef ESP32
+  client.setTimeout(3);
+#else
+  client.setTimeout(3000);
+#endif
 
   DEBUG_PRINT("Connecting to: ");
   DEBUG_PRINTLN(host);
 
   if (!client.connect(host, port)) {
     DEBUG_PRINTLN("!!! Connection to Neo Hub failed !!!");
-    return false;
+    return 0;
   }
 
   DEBUG_PRINTLN("Connected! Sending Command...");
@@ -699,7 +830,7 @@ bool getHeatmiserTemperature(const char* host, uint16_t port) {
   DEBUG_PRINTLN("Command Sent. Waiting for response...");
 
   unsigned long startWait = millis();
-  while (client.available() == 0 && millis() - startWait < 5000) {
+  while (client.available() == 0 && millis() - startWait < 3000) {
     if (!client.connected()) {
       DEBUG_PRINTLN("Hub closed connection early.");
       break;
@@ -723,6 +854,7 @@ bool getHeatmiserTemperature(const char* host, uint16_t port) {
       DEBUG_PRINTLN(error.f_str());
     } else {
       DEBUG_PRINTLN("JSON Parsed Successfully:");
+      result = 2;
       JsonArray devices = doc["devices"];
       serializeJson(devices, DEBUGPORT);
       DEBUG_PRINTLN("");
@@ -767,19 +899,38 @@ bool getHeatmiserTemperature(const char* host, uint16_t port) {
     DEBUG_PRINTLN("Timed out waiting for data.");
   }
   client.stop();
-  return true;
+  return result;
 }
 
 
 void RequestHeatmiserData(void) {
-  String discoveredIP = "";
-  if (strcmp(mqttSettings.heatmiser, "neohub.local") != 0 && strcmp(mqttSettings.heatmiser, "") != 0 && WiFi.status() == WL_CONNECTED) {
+  if (strcmp(mqttSettings.heatmiser, "neohub.local") != 0 && strcmp(mqttSettings.heatmiser, "") != 0 && NetworkUp()) {
+    // Backoff: skip this tick while waiting out a failure delay (the timer itself keeps ticking every 60 s)
+    if (HMBackoffActive && (long)(millis() - HMNextTryMs) < 0) {
+      return;
+    }
     DEBUG_PRINTLN("Requesting Heatmiser Data...");
-    if (!getHeatmiserTemperature(mqttSettings.heatmiser, 4242)) {
-      startDiscovery();
+    uint8_t res = getHeatmiserTemperature(mqttSettings.heatmiser, 4242);
+    if (res == 2) {
+      HMFailCount = 0;
+      HMBackoffActive = false;
+    } else {
+      if (res == 0) {
+        startDiscovery();  // Hub may have changed IP (non-blocking)
+      }
+      if (HMFailCount < 255) HMFailCount++;
+      // 60 s base, doubling per consecutive failure: 2, 4, 8, 10 min (capped)
+      unsigned long delayMs = HM_BASE_INTERVAL_MS;
+      for (uint8_t i = 0; i < HMFailCount && delayMs < HM_MAX_BACKOFF_MS; i++) delayMs *= 2;
+      if (delayMs > HM_MAX_BACKOFF_MS) delayMs = HM_MAX_BACKOFF_MS;
+      HMNextTryMs = millis() + delayMs - (HM_BASE_INTERVAL_MS / 2);  // Timer ticks every 60 s; aim half a tick early so the tick at ~delayMs is the first one allowed through
+      HMBackoffActive = (delayMs > HM_BASE_INTERVAL_MS);
+      DEBUG_PRINT("Heatmiser unreachable, next attempt in ~");
+      DEBUG_PRINT(delayMs / 1000);
+      DEBUG_PRINTLN("s");
     }
   } else {
-    DEBUG_PRINTLN("No Heatmiser Set and/or no WiFi Connection");
+    DEBUG_PRINTLN("No Heatmiser Set and/or no network connection");
   }
 }
 
@@ -828,6 +979,9 @@ void StatusReport(void) {
 
   doc[F("SSID")] = WiFi.SSID();
   doc[F("RSSI")] = WiFi.RSSI();
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
+  doc[F("RoamCount")] = RoamCount;
+#endif
 #ifdef ARDUINO_WT32_ETH01
   doc[F("IP")] = ETH.localIP().toString();
 #else
@@ -938,12 +1092,18 @@ void onTelnetConnectionAttempt(String ip) {
 
 
 void CheckForOTAUpdates(void) {
+  if (!NetworkUp()) { return; }  // No link: skip rather than block on a connect that cannot succeed
+
   // Perform HTTP request to get Target Version
   bool updateAvailable = false;
   String targetversion, betaversion;
 
   DEBUG_PRINT(F("Checking for Firmware Updates..."));
 
+#ifdef ESP32
+  http.setConnectTimeout(3000);  // This call is blocking (TLS handshake included), keep it short
+  http.setTimeout(3000);
+#endif
   http.begin(F("https://witty.house/CNRF/update.json"), witty_house_root_ca);  //HTTPS
 
   // start connection and send HTTP header
@@ -1094,6 +1254,8 @@ void runNonBlockingDiscovery() {
 
       // Copy to your char array storage
       hubIP.toCharArray(mqttSettings.heatmiser, sizeof(mqttSettings.heatmiser));
+      HMFailCount = 0;  // New address: try straight away on the next tick
+      HMBackoffActive = false;
 
       // Update your live tracking variable
       custom_hm_server.setValue(hubIP.c_str(), hostname_max_length);
@@ -1115,6 +1277,78 @@ void startDiscovery() {
     DEBUG_PRINTLN("Starting non-blocking discovery...");
   }
 }
+
+
+#if defined(ESP32) && !defined(ARDUINO_WT32_ETH01)
+// Roam to a stronger access point of the same SSID (mesh/multi-AP). Called every loop while connected.
+void WiFiRoamHandler(bool JustConnected) {
+  if (JustConnected) {
+    RoamLastCheck = millis() - ROAM_CHECK_INTERVAL + ROAM_FIRST_CHECK;
+    RoamScanRunning = false;
+  }
+  if (!RoamScanRunning) {
+    if (millis() - RoamLastCheck < ROAM_CHECK_INTERVAL) { return; }
+    RoamLastCheck = millis();
+    if (WiFi.RSSI() > ROAM_WEAK_RSSI) { return; }
+    if (WiFi.scanNetworks(true, false) == WIFI_SCAN_FAILED) { return; }  // Asynchronous scan: the main loop keeps running
+    RoamScanRunning = true;
+    return;
+  }
+  int16_t n = WiFi.scanComplete();
+  if (n == WIFI_SCAN_RUNNING) { return; }
+  RoamScanRunning = false;
+  if (n <= 0) {
+    WiFi.scanDelete();
+    return;
+  }
+  String CurrentSSID = WiFi.SSID();
+  int32_t CurrentRSSI = WiFi.RSSI();
+  uint8_t CurrentBSSID[6];
+  memcpy(CurrentBSSID, WiFi.BSSID(), 6);
+  int Best = -1;
+  int32_t BestRSSI = -127;
+  for (int i = 0; i < n; i++) {
+    if (WiFi.SSID(i) == CurrentSSID && WiFi.RSSI(i) > BestRSSI) {
+      Best = i;
+      BestRSSI = WiFi.RSSI(i);
+    }
+  }
+  if (Best >= 0 && BestRSSI >= CurrentRSSI + ROAM_MIN_GAIN && memcmp(WiFi.BSSID(Best), CurrentBSSID, 6) != 0) {
+    uint8_t TargetBSSID[6];
+    memcpy(TargetBSSID, WiFi.BSSID(Best), 6);
+    int32_t TargetChannel = WiFi.channel(Best);
+    RoamSSID = CurrentSSID;
+    RoamPSK = WiFi.psk();
+    WiFi.scanDelete();
+    DEBUG_PRINT(F("WiFi roam: "));
+    DEBUG_PRINT(CurrentRSSI);
+    DEBUG_PRINT(F(" dBm -> "));
+    DEBUG_PRINT(BestRSSI);
+    DEBUG_PRINTLN(F(" dBm"));
+    WiFi.persistent(false);  // The access point choice stays in RAM: after a reboot the connection is standard
+    RoamCount++;
+    WiFi.begin(RoamSSID.c_str(), RoamPSK.c_str(), TargetChannel, TargetBSSID);
+    WiFi.persistent(true);
+    RoamBssidLocked = true;
+    return;
+  }
+  WiFi.scanDelete();
+}
+
+// If the access point chosen by the roam code has disappeared, release the lock and accept any access point of the SSID
+void WiFiRoamUnlock(unsigned long DisconnectedFor) {
+  if (RoamBssidLocked && DisconnectedFor >= ROAM_UNLOCK_AFTER) {
+    RoamBssidLocked = false;
+    DEBUG_PRINTLN(F("WiFi roam: access point lost, reconnecting without lock"));
+    WiFi.persistent(false);
+    WiFi.disconnect(false, false);
+    RoamCount++;
+    WiFi.begin(RoamSSID.c_str(), RoamPSK.c_str());
+    WiFi.persistent(true);
+  }
+}
+#endif
+
 
 #ifdef ARDUINO_WT32_ETH01
 // WARNING: onEvent is called from a separate FreeRTOS task (thread)!

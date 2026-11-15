@@ -50,8 +50,7 @@ void readSettingsFromConfig() {
             DEBUG_PRINTLN(error.c_str());
           } else {
             DEBUG_PRINTLN(F("Parsed JSON: "));
-            serializeJson(doc, DEBUGPORT);
-            DEBUG_PRINTLN();
+            // Not echoing the document: it contains the MQTT password and DEBUGPORT is the network-reachable telnet console
 
             // Build in safety check, otherwise ESP will crash out and you can't get back in
 
@@ -120,6 +119,16 @@ void readSettingsFromConfig() {
               shouldSaveConfig = true;
               DEBUG_PRINTLN(F("MQTT Password Parse Failed"));
             }
+            if (doc.containsKey(unitSettings.qty_identifier)) {
+              int q = doc[unitSettings.qty_identifier] | 0;
+              if (q >= 1 && q <= 8) {
+                unitSettings.Quantity = q;
+              }
+            } else {
+              shouldSaveConfig = true;  // Older config without a stored quantity: write it once
+              DEBUG_PRINTLN(F("QTY Parse Failed"));
+            }
+
             if (doc.containsKey(mqttSettings.wm_mqtt_basetopic_identifier)) {
               if ((strlen(doc[mqttSettings.wm_mqtt_basetopic_identifier]) > 0) && ((strlen(doc[mqttSettings.wm_mqtt_basetopic_identifier]) + 1) <= basetopic_max_length)) {
                 strcpy(mqttSettings.baseTopic, doc[mqttSettings.wm_mqtt_basetopic_identifier]);
@@ -166,20 +175,28 @@ void readSettingsFromConfig() {
     MQTTCommandControllerRC = MQTT_COMMAND_RC;
   }
 
-  void saveConfig() {
-    DEBUG_PRINTLN(F("Copying Portal Values..."));
+  // fromPortal = true : the WiFiManager portal was submitted; copy its fields, save, then reboot to apply them.
+  // fromPortal = false: internal save (QTY change, discovered hub IP, first-run defaults); just persist, NO reboot.
+  void saveConfig(bool fromPortal = false) {
+    // Clear the request first. Previously an early return on a failed file open left this set, so loop() retried
+    // the flash open every pass and the main loop (and FTC traffic) ran at the speed of a failing filesystem.
+    shouldSaveConfig = false;
 
-    // Use strlcpy (Safe copy) to prevent overflows
-    // This ensures we never write more than the destination can hold
-    strlcpy(mqttSettings.deviceId, custom_device_id.getValue(), sizeof(mqttSettings.deviceId));
-    strlcpy(mqttSettings.heatmiser, custom_hm_server.getValue(), sizeof(mqttSettings.heatmiser));
-    strlcpy(mqttSettings.z1_name, custom_hm_z1.getValue(), sizeof(mqttSettings.z1_name));
-    strlcpy(mqttSettings.z2_name, custom_hm_z2.getValue(), sizeof(mqttSettings.z2_name));
-    strlcpy(mqttSettings.hostname, custom_mqtt_server.getValue(), sizeof(mqttSettings.hostname));
-    strlcpy(mqttSettings.port, custom_mqtt_port.getValue(), sizeof(mqttSettings.port));
-    strlcpy(mqttSettings.user, custom_mqtt_user.getValue(), sizeof(mqttSettings.user));
-    strlcpy(mqttSettings.password, custom_mqtt_pass.getValue(), sizeof(mqttSettings.password));
-    strlcpy(mqttSettings.baseTopic, custom_mqtt_basetopic.getValue(), sizeof(mqttSettings.baseTopic));
+    if (fromPortal) {
+      DEBUG_PRINTLN(F("Copying Portal Values..."));
+
+      // Use strlcpy (Safe copy) to prevent overflows
+      // This ensures we never write more than the destination can hold
+      strlcpy(mqttSettings.deviceId, custom_device_id.getValue(), sizeof(mqttSettings.deviceId));
+      strlcpy(mqttSettings.heatmiser, custom_hm_server.getValue(), sizeof(mqttSettings.heatmiser));
+      strlcpy(mqttSettings.z1_name, custom_hm_z1.getValue(), sizeof(mqttSettings.z1_name));
+      strlcpy(mqttSettings.z2_name, custom_hm_z2.getValue(), sizeof(mqttSettings.z2_name));
+      strlcpy(mqttSettings.hostname, custom_mqtt_server.getValue(), sizeof(mqttSettings.hostname));
+      strlcpy(mqttSettings.port, custom_mqtt_port.getValue(), sizeof(mqttSettings.port));
+      strlcpy(mqttSettings.user, custom_mqtt_user.getValue(), sizeof(mqttSettings.user));
+      strlcpy(mqttSettings.password, custom_mqtt_pass.getValue(), sizeof(mqttSettings.password));
+      strlcpy(mqttSettings.baseTopic, custom_mqtt_basetopic.getValue(), sizeof(mqttSettings.baseTopic));
+    }
 
     DEBUG_PRINT(F("Saving config... "));
     File configFile = LittleFS.open("/config.json", "w");
@@ -199,6 +216,7 @@ void readSettingsFromConfig() {
     doc[mqttSettings.wm_mqtt_user_identifier] = mqttSettings.user;
     doc[mqttSettings.wm_mqtt_password_identifier] = mqttSettings.password;
     doc[mqttSettings.wm_mqtt_basetopic_identifier] = mqttSettings.baseTopic;
+    doc[unitSettings.qty_identifier] = unitSettings.Quantity;
 
     if (serializeJson(doc, configFile) == 0) {
       DEBUG_PRINTLN("[FAILED]");
@@ -207,32 +225,52 @@ void readSettingsFromConfig() {
     }
     configFile.close();
 
-    // CRITICAL: Don't stop/start the portal inside the save function.
-    // Set a flag and do it in the main loop, or better yet, just restart the ESP.
-    shouldSaveConfig = false;
-
-    DEBUG_PRINTLN(F("Config Saved. Rebooting to apply changes..."));
-    delay(1000);
-    ESP.restart();
+    if (fromPortal) {
+      // CRITICAL: Don't stop/start the portal inside the save function; restart the ESP to apply the new settings.
+      DEBUG_PRINTLN(F("Config Saved. Rebooting to apply changes..."));
+      delay(1000);
+      ESP.restart();
+    }
   }
 
-  // Callback notifying us of the need to save config
+  // Callback notifying us of the need to save config (WiFiManager portal submit)
   void saveConfigCallback() {
-    saveConfig();
+    saveConfig(true);
   }
 
   // Handle Webhook Callbacks
   void handleRoute() {
+    // Validate everything first, apply only if every supplied value is a number in range (same 0-63.5 limit as the MQTT RC command).
+    // Previously a non-numeric value became 0.0 degC and was sent to the FTC as the room temperature.
+    float newVal[8];
+    bool present[8] = { false };
     bool updated = false;
+    bool invalid = false;
     for (int i = 0; i < 8; i++) {  // rc1 - rc8
       String arg = String("rc") + String(i + 1);
       if (wifiManager.server->hasArg(arg)) {
-        RCInput[i] = wifiManager.server->arg(arg).toFloat();
-        RCTemp[i] = roundToNearestHalf(RCInput[i]);
+        String raw = wifiManager.server->arg(arg);
+        raw.trim();
+        char* endp = nullptr;
+        float v = strtof(raw.c_str(), &endp);
+        if (raw.length() == 0 || endp == raw.c_str() || *endp != '\0' || isnan(v) || v < 0.0f || v > 63.5f) {
+          invalid = true;
+          break;
+        }
+        newVal[i] = v;
+        present[i] = true;
         updated = true;
       }
     }
-    if (updated) {
+    if (!invalid) {
+      for (int i = 0; i < 8; i++) {
+        if (present[i]) {
+          RCInput[i] = newVal[i];
+          RCTemp[i] = roundToNearestHalf(RCInput[i]);
+        }
+      }
+    }
+    if (updated && !invalid) {
       wifiManager.server->send(200, "text/plain", "success");
     } else {
       wifiManager.server->send(400, "text/plain", "failed");
@@ -463,8 +501,7 @@ void readSettingsFromConfig() {
       DEBUG_PRINT(mqttSettings.deviceId);
       DEBUG_PRINT(", Username: ");
       DEBUG_PRINT(mqttSettings.user);
-      DEBUG_PRINT(" and Password: ");
-      DEBUG_PRINTLN(mqttSettings.password);
+      DEBUG_PRINTLN(mqttSettings.password[0] != '\0' ? " and a Password" : " and no Password");
 
       if (MQTTClient1.connect(mqttSettings.deviceId, mqttSettings.user, mqttSettings.password, MQTT_LWT.c_str(), 0, true, "offline")) {
         DEBUG_PRINTLN("MQTT Server Connected");
